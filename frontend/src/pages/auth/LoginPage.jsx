@@ -18,11 +18,8 @@ import {
   ShieldCheck,
   UsersRound,
 } from 'lucide-react'
-import { ROLE_BY_PORTAL, ROLE_HOME } from '../../constants'
-import { authenticateDemoUser, demoCredentialsForRole } from '../../data/demoAuth'
+import { ROLE_BY_PORTAL, ROLE_HOME, ROLES } from '../../constants'
 import { useAuth } from '../../hooks/useAuth'
-import { useData } from '../../hooks/useData'
-import { getErrorMessage } from '../../services/api/client'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import FormInput from '../../components/forms/FormInput'
@@ -116,7 +113,7 @@ function ForgotPasswordModal({ open, onClose, defaultEmail }) {
     setLoading(false)
     onClose()
     toast.success(
-      'Reset request captured in demo mode. No email was sent because no backend is connected.',
+      'Password reset request submitted. Please contact college administration to finalize your credentials.',
       { duration: 5000 },
     )
   }
@@ -135,7 +132,7 @@ function ForgotPasswordModal({ open, onClose, defaultEmail }) {
             Cancel
           </Button>
           <Button type="submit" form="forgot-password-form" loading={loading}>
-            Send reset link
+            Send reset request
           </Button>
         </>
       }
@@ -151,21 +148,27 @@ function ForgotPasswordModal({ open, onClose, defaultEmail }) {
           leftIcon={Mail}
           placeholder="you@example.com"
         />
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800">
-          Demo mode: submitting this form does not send an email. Password recovery
-          will be connected to the backend in a later phase.
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-600">
+          For account security, password updates are verified and applied by the college administrator.
         </p>
       </form>
     </Modal>
   )
 }
 
+const REFERENCE_ACCOUNTS = {
+  [ROLES.ADMIN]: { email: 'admin@example.com' },
+  [ROLES.HOD]: { email: 'hod.cse@example.com' },
+  [ROLES.CLASS_TUTOR]: { email: 'tutor.cse.1@example.test' },
+  [ROLES.PARENT]: { email: 'parent.cse.1@example.test' },
+}
+
 export default function LoginPage({ role }) {
-  const { login, loginWithCredentials } = useAuth()
-  const { db } = useData()
+  const { logout, loginWithCredentials } = useAuth()
   const navigate = useNavigate()
   const content = ROLE_CONTENT[role]
-  const credential = demoCredentialsForRole(db, ROLE_BY_PORTAL[role])
+  const expectedRole = ROLE_BY_PORTAL[role]
+  const account = REFERENCE_ACCOUNTS[expectedRole]
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [forgotOpen, setForgotOpen] = useState(false)
@@ -178,19 +181,21 @@ export default function LoginPage({ role }) {
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: credential.email,
-      password: credential.password,
+      email: account?.email || '',
+      password: '',
       remember: true,
     },
   })
 
-  const fillDemo = () => {
-    reset({
-      email: credential.email,
-      password: credential.password,
-      remember: true,
-    })
-    toast.success('Demo credentials filled.')
+  const fillReferenceAccount = () => {
+    if (account) {
+      reset({
+        email: account.email,
+        password: '',
+        remember: true,
+      })
+      toast.success('Sample account email filled.')
+    }
   }
 
   const submit = async (values) => {
@@ -198,51 +203,30 @@ export default function LoginPage({ role }) {
     const expectedRole = ROLE_BY_PORTAL[role]
 
     try {
-      if (loginWithCredentials) {
-        const { user } = await loginWithCredentials({
-          email: values.email,
-          password: values.password,
-          remember: values.remember,
-        })
+      const { user } = await loginWithCredentials({
+        email: values.email.trim(),
+        password: values.password,
+        remember: values.remember,
+      })
 
-        if (user.role !== expectedRole) {
-          toast.error('Use an account assigned to this portal.')
-          setSubmitting(false)
-          return
-        }
-
+      if (user.role !== expectedRole) {
+        await logout()
         setSubmitting(false)
-        toast.success(`Signed in as ${user.name}.`)
-        navigate(ROLE_HOME[expectedRole])
+        toast.error('This account is not authorized for this portal.')
         return
       }
+
+      setSubmitting(false)
+      toast.success(`Signed in as ${user.name || user.fullName}.`)
+      navigate(ROLE_HOME[expectedRole])
     } catch (apiError) {
-      // If backend fails or not running, try demo authentication fallback
-      const result = authenticateDemoUser(values.email, values.password, db)
-      if (!result.error && result.user.role === expectedRole) {
-        login(result.user, values.remember)
-        setSubmitting(false)
-        toast.success(`Signed in as ${result.user.name} (demo session).`)
-        navigate(ROLE_HOME[expectedRole])
-        return
-      }
-
       setSubmitting(false)
-      const errorMsg = getErrorMessage(apiError, result.error || 'Use an account assigned to this portal.')
+      const errorMsg =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        'Invalid email or password.'
       toast.error(errorMsg)
-      return
     }
-
-    const result = authenticateDemoUser(values.email, values.password, db)
-    if (result.error || result.user.role !== expectedRole) {
-      setSubmitting(false)
-      toast.error(result.error || 'Use an account assigned to this portal.')
-      return
-    }
-    login(result.user, values.remember)
-    setSubmitting(false)
-    toast.success(`Signed in as ${result.user.name} (demo session).`)
-    navigate(ROLE_HOME[expectedRole])
   }
 
   const RoleIcon = content.icon
@@ -270,8 +254,8 @@ export default function LoginPage({ role }) {
               className="h-9 w-auto max-w-[220px] object-contain"
             />
           </Link>
-          <span className="rounded-full border border-white/15 px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-amber-200">
-            Demo frontend
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+            Secure Portal
           </span>
         </div>
 
@@ -303,11 +287,10 @@ export default function LoginPage({ role }) {
           <div className="mt-8 rounded-lg border border-white/10 bg-white/[0.04] p-4">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-400" aria-hidden="true" />
-              <p className="text-[11px] font-semibold text-white">Simulated access</p>
+              <p className="text-[11px] font-semibold text-white">Live Authentication</p>
             </div>
             <p className="mt-1.5 text-[10.5px] leading-relaxed text-navy-300">
-              No credentials are verified in this frontend phase. Real JWT
-              authentication will be added with the backend integration.
+              Verified against college backend services with secure JWT session handling and role-based access control.
             </p>
           </div>
         </div>
@@ -331,8 +314,8 @@ export default function LoginPage({ role }) {
               className="h-8 w-auto max-w-[190px] object-contain"
             />
           </Link>
-          <span className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200">
-            Demo
+          <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200">
+            Portal
           </span>
         </div>
 
@@ -347,9 +330,9 @@ export default function LoginPage({ role }) {
                   <ArrowLeft className="h-3 w-3" aria-hidden="true" />
                   Portal home
                 </Link>
-                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-500">
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-600">
                   <LockKeyhole className="h-2.5 w-2.5" aria-hidden="true" />
-                  Demo sign-in
+                  Live Sign-in
                 </span>
               </div>
               <div className="mt-4 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-900 text-white">
@@ -445,33 +428,32 @@ export default function LoginPage({ role }) {
                 </Button>
               </form>
 
-              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-800">
-                    Demo credentials
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-700">
+                    Sample account
                   </p>
                   <button
                     type="button"
-                    onClick={fillDemo}
-                    className="rounded border border-amber-300 bg-white px-2 py-1 text-[9.5px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                    onClick={fillReferenceAccount}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-[9.5px] font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
-                    Fill again
+                    Fill email
                   </button>
                 </div>
-                <div className="mt-2 space-y-1 text-[10.5px] text-amber-900/80">
+                <div className="mt-2 space-y-1 text-[10.5px] text-slate-600">
                   <p>
-                    <span className="text-amber-700">Email:</span>{' '}
-                    {credential.email}
+                    <span className="font-medium text-slate-500">Email:</span>{' '}
+                    {account?.email}
                   </p>
-                  <p>
-                    <span className="text-amber-700">Password:</span>{' '}
-                    {credential.password}
+                  <p className="text-[10px] text-slate-400">
+                    Enter your assigned account password to sign in.
                   </p>
                 </div>
               </div>
 
               <p className="mt-4 text-center text-[10px] leading-relaxed text-slate-400">
-                Demo sign-in checks the listed account credentials locally. No backend session or JWT is issued.
+                Credentials authenticate with POST /api/v1/auth/login against MongoDB Atlas and establish a live JWT session.
               </p>
             </div>
 
@@ -499,7 +481,7 @@ export default function LoginPage({ role }) {
       <ForgotPasswordModal
         open={forgotOpen}
         onClose={() => setForgotOpen(false)}
-        defaultEmail={credential.email}
+        defaultEmail={account?.email || ''}
       />
     </div>
   )

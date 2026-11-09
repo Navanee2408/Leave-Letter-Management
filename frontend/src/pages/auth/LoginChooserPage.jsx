@@ -9,10 +9,15 @@ import {
   ShieldCheck,
   UsersRound,
 } from 'lucide-react'
-import { ROLE_BY_PORTAL, ROLE_HOME } from '../../constants'
-import { demoCredentialsForRole } from '../../data/demoAuth'
+import { ROLE_BY_PORTAL, ROLE_HOME, ROLES as APP_ROLES } from '../../constants'
 import { useAuth } from '../../hooks/useAuth'
-import { useData } from '../../hooks/useData'
+
+const REFERENCE_ACCOUNTS = {
+  [APP_ROLES.ADMIN]: { email: 'admin@example.com' },
+  [APP_ROLES.HOD]: { email: 'hod.cse@example.com' },
+  [APP_ROLES.CLASS_TUTOR]: { email: 'tutor.cse.1@example.test' },
+  [APP_ROLES.PARENT]: { email: 'parent.cse.1@example.test' },
+}
 
 const ROLES = [
   {
@@ -87,7 +92,6 @@ const ROLES = [
 
 export default function LoginChooserPage() {
   const { user } = useAuth()
-  const { db } = useData()
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -119,9 +123,9 @@ export default function LoginChooserPage() {
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wide text-amber-700">
-                <ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />
-                Demo sign-in
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-600">
+                <ShieldCheck className="h-2.5 w-2.5 text-emerald-500" aria-hidden="true" />
+                Live Portals
               </span>
             )}
             <Link
@@ -145,15 +149,15 @@ export default function LoginChooserPage() {
             Sign in to the leave management system
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-[13.5px] leading-relaxed text-slate-500">
-            Four role-based workspaces share one leave workflow. Choose a portal to
-            continue with the pre-filled demo credentials.
+            Four role-based workspaces share one leave workflow. Select your portal to sign in with your college credentials.
           </p>
         </div>
 
         <div className="mt-9 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {ROLES.map((role) => {
             const Icon = role.icon
-            const credential = demoCredentialsForRole(db, ROLE_BY_PORTAL[role.key])
+            const expectedRole = ROLE_BY_PORTAL[role.key]
+            const account = REFERENCE_ACCOUNTS[expectedRole]
             return (
               <Link
                 key={role.key}
@@ -191,16 +195,16 @@ export default function LoginChooserPage() {
                   ))}
                 </ul>
 
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5">
-                  <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+                  <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
                     <KeyRound className="h-2.5 w-2.5" aria-hidden="true" />
-                    Demo credentials
+                    Portal account
                   </p>
-                  <p className="mt-1 truncate text-[10.5px] text-amber-900">
-                    {credential.email}
+                  <p className="mt-1 truncate text-[10.5px] font-medium text-slate-800">
+                    {account?.email}
                   </p>
-                  <p className="text-[10.5px] text-amber-900/70">
-                    Password: {credential.password}
+                  <p className="text-[10px] text-slate-400">
+                    Requires assigned credentials
                   </p>
                 </div>
 
@@ -213,13 +217,11 @@ export default function LoginChooserPage() {
           })}
         </div>
 
-        <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-          <p className="flex items-start gap-2.5 text-[11px] leading-relaxed text-amber-900">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+        <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <p className="flex items-start gap-2.5 text-[11px] leading-relaxed text-emerald-900">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
             <span>
-              <span className="font-semibold">Frontend demo only.</span> Sign-in checks
-              the listed credentials locally. No backend session or JWT is issued, and
-              sessions and records remain in this browser.
+              <span className="font-semibold">Live Backend Authentication.</span> All logins authenticate against MongoDB via the live backend API (<code className="rounded bg-emerald-100/80 px-1 py-0.5 text-[10px]">POST /api/v1/auth/login</code>) and establish secure JWT sessions.
             </span>
           </p>
         </div>
@@ -228,10 +230,9 @@ export default function LoginChooserPage() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1180px] flex-col items-start justify-between gap-2 px-4 py-5 text-[10.5px] text-slate-400 sm:flex-row sm:items-center sm:px-6 lg:px-8">
           <p>
-            © {new Date().getFullYear()} College Leave Management System · Frontend
-            demonstration
+            © {new Date().getFullYear()} College Leave Management System
           </p>
-          <p>Independent academic prototype · Not an official TCE service</p>
+          <p>Thiagarajar College of Engineering · ERP Leave Portal</p>
         </div>
       </footer>
     </div>

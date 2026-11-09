@@ -440,42 +440,44 @@ export default function ProfilePage({ role }) {
             </div>
           </SectionCard>
 
-          <SectionCard title="Demo data" subtitle="The dataset is stored in this browser" icon={RotateCcw}>
-            <p className="text-xs leading-relaxed text-slate-500">
-              Reset the browser-local demo data to restore the original departments,
-              students, parents, tutors, leave applications and notifications. Your
-              profile details in the simulated session are not changed.
-            </p>
-            <div className="mt-4 flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50/60 p-3.5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[12.5px] font-semibold text-rose-800">
-                  Restore demo dataset
-                </p>
-                <p className="mt-0.5 text-[10.5px] text-rose-700/80">
-                  Any applications or edits you created will be removed.
-                </p>
+          {!user?.isBackend && (
+            <SectionCard title="Demo data" subtitle="The dataset is stored in this browser" icon={RotateCcw}>
+              <p className="text-xs leading-relaxed text-slate-500">
+                Reset the browser-local demo data to restore the original departments,
+                students, parents, tutors, leave applications and notifications. Your
+                profile details in the simulated session are not changed.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50/60 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[12.5px] font-semibold text-rose-800">
+                    Restore demo dataset
+                  </p>
+                  <p className="mt-0.5 text-[10.5px] text-rose-700/80">
+                    Any applications or edits you created will be removed.
+                  </p>
+                </div>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setResetOpen(true)}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset demo data
+                </Button>
               </div>
-              <Button
-                variant="danger"
-                size="sm"
-                className="shrink-0"
-                onClick={() => setResetOpen(true)}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset demo data
-              </Button>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          )}
 
           <div className="card p-4">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
-              Demonstration environment
+              {user?.isBackend ? 'Live Account Security' : 'Demonstration environment'}
             </p>
             <p className="mt-1.5 text-[10.5px] leading-relaxed text-slate-400">
-              This portal is a frontend-only prototype. Credentials, sessions and
-              decisions are simulated and must not be used for real college
-              administration.
+              {user?.isBackend
+                ? 'Your session is actively authenticated against the college MongoDB database with secure JSON Web Tokens.'
+                : 'This portal is a frontend-only prototype. Credentials, sessions and decisions are simulated and must not be used for real college administration.'}
             </p>
           </div>
         </div>

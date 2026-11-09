@@ -2,8 +2,6 @@ import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { ROLE_HOME, ROLE_LOGIN } from '../../constants'
 import { useAuth } from '../../hooks/useAuth'
-import { useData } from '../../hooks/useData'
-import { isDemoAccountActive } from '../../data/demoAuth'
 
 function InactiveSessionRedirect({ to }) {
   const { logout } = useAuth()
@@ -15,7 +13,6 @@ function InactiveSessionRedirect({ to }) {
 
 export default function ProtectedRoute({ role }) {
   const { user, isLoading } = useAuth()
-  const { db } = useData()
   const location = useLocation()
 
   if (isLoading) {
@@ -43,7 +40,7 @@ export default function ProtectedRoute({ role }) {
   const isInactive =
     user.status === 'inactive' ||
     user.accountStatus === 'INACTIVE' ||
-    (!user.isBackend && !isDemoAccountActive(db, user))
+    user.accountStatus === 'SUSPENDED'
 
   if (isInactive) {
     return <InactiveSessionRedirect to={ROLE_LOGIN[user.role] || '/login'} />

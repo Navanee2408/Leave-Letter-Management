@@ -160,8 +160,8 @@ export default function Sidebar({
             <div className="mb-2 flex items-center gap-2 rounded-lg bg-white/[0.04] px-2.5 py-2">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold text-white/90">Demo environment</p>
-                <p className="truncate text-[9px] text-navy-300">Frontend prototype · no live auth</p>
+                <p className="text-[10px] font-semibold text-white/90">College Leave Portal</p>
+                <p className="truncate text-[9px] font-medium text-emerald-400/90">Live authenticated session</p>
               </div>
             </div>
           )}

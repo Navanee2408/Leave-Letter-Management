@@ -75,11 +75,11 @@ export async function generateApprovedLeavePDF({
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(110, 120, 135)
-  doc.text('Academic administration · Frontend prototype', 194, 22, { align: 'right' })
-  doc.setTextColor(...MAROON)
+  doc.text('Academic administration · Verified leave record', 194, 22, { align: 'right' })
+  doc.setTextColor(16, 120, 72)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
-  doc.text('FRONTEND DEMO · NOT VERIFIED', 194, 27, { align: 'right' })
+  doc.text('OFFICIALLY APPROVED · VERIFIED', 194, 27, { align: 'right' })
 
   doc.setDrawColor(...NAVY)
   doc.setLineWidth(0.7)
@@ -241,7 +241,7 @@ export async function generateApprovedLeavePDF({
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
   const disclaimer =
-    'This is a computer-generated demonstration document produced by a frontend-only academic prototype. It is not an official certificate or endorsement of Thiagarajar College of Engineering and is not valid until verified by the college leave management backend.'
+    'This is a computer-generated leave letter issued by the College Leave Management System upon approval by the Head of Department. Reference records and audit history are secured in the institutional database.'
   doc.text(doc.splitTextToSize(disclaimer, 178), 16, 276)
   doc.text(`Generated ${formatDateTime(new Date())} · Portal reference ${leave.id}`, 16, 289)
 

@@ -29,6 +29,7 @@ function readSession() {
     const valid =
       normalized &&
       normalized.id &&
+      normalized.isBackend &&
       (ROLE_VALUES.includes(normalized.role) || normalized.role === 'TUTOR')
     if (!valid) {
       localStorage.removeItem(AUTH_STORAGE_KEY)
@@ -131,6 +132,7 @@ export function AuthProvider({ children }) {
       try {
         const result = await authApi.refresh()
         if (mounted && result?.user && result?.accessToken) {
+          setAccessToken(result.accessToken)
           const normalized = normalizeUser({
             ...result.user,
             isBackend: true,
@@ -139,9 +141,15 @@ export function AuthProvider({ children }) {
           const remember = Boolean(localStorage.getItem(AUTH_STORAGE_KEY))
           persist(normalized, remember)
           connectSocket(result.accessToken)
+        } else if (mounted) {
+          setUser(null)
+          persist(null)
         }
       } catch {
-        // Backend session not active; preserve local demo session if valid
+        if (mounted) {
+          setUser(null)
+          persist(null)
+        }
       } finally {
         if (mounted) {
           setIsLoading(false)
