@@ -33,7 +33,7 @@ export default function LeaveDetailsModal({
       open={open}
       onClose={onClose}
       title={title}
-      description={`${leave.id} · Submitted ${formatDateTime(leave.submittedAt)}`}
+      description={`${leave.applicationNumber || leave.id} · Submitted ${formatDateTime(leave.submittedAt)}`}
       icon={FileSearch}
       size="xl"
       footer={

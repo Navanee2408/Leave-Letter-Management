@@ -1,0 +1,46 @@
+{
+  "name": "college-leave-management-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend API for the College Leave Letter Management System",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "node --import ./tests/setup.js --test",
+    "test:watch": "node --import ./tests/setup.js --test --watch",
+    "seed:admin": "node scripts/seedAdmin.js",
+    "seed:departments": "node scripts/seedDepartments.js",
+    "seed:phase4": "node scripts/seedAcademicData.js"
+  },
+  "keywords": [
+    "leave-management",
+    "express",
+    "mongodb",
+    "mongoose"
+  ],
+  "license": "UNLICENSED",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.0",
+    "morgan": "^1.12.1",
+    "multer": "^2.5.0",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.4"
+  }
+}

@@ -22,6 +22,7 @@ import { ROLE_BY_PORTAL, ROLE_HOME } from '../../constants'
 import { authenticateDemoUser, demoCredentialsForRole } from '../../data/demoAuth'
 import { useAuth } from '../../hooks/useAuth'
 import { useData } from '../../hooks/useData'
+import { getErrorMessage } from '../../services/api/client'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import FormInput from '../../components/forms/FormInput'
@@ -160,7 +161,7 @@ function ForgotPasswordModal({ open, onClose, defaultEmail }) {
 }
 
 export default function LoginPage({ role }) {
-  const { login } = useAuth()
+  const { login, loginWithCredentials } = useAuth()
   const { db } = useData()
   const navigate = useNavigate()
   const content = ROLE_CONTENT[role]
@@ -194,9 +195,45 @@ export default function LoginPage({ role }) {
 
   const submit = async (values) => {
     setSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 650))
-    const result = authenticateDemoUser(values.email, values.password, db)
     const expectedRole = ROLE_BY_PORTAL[role]
+
+    try {
+      if (loginWithCredentials) {
+        const { user } = await loginWithCredentials({
+          email: values.email,
+          password: values.password,
+          remember: values.remember,
+        })
+
+        if (user.role !== expectedRole) {
+          toast.error('Use an account assigned to this portal.')
+          setSubmitting(false)
+          return
+        }
+
+        setSubmitting(false)
+        toast.success(`Signed in as ${user.name}.`)
+        navigate(ROLE_HOME[expectedRole])
+        return
+      }
+    } catch (apiError) {
+      // If backend fails or not running, try demo authentication fallback
+      const result = authenticateDemoUser(values.email, values.password, db)
+      if (!result.error && result.user.role === expectedRole) {
+        login(result.user, values.remember)
+        setSubmitting(false)
+        toast.success(`Signed in as ${result.user.name} (demo session).`)
+        navigate(ROLE_HOME[expectedRole])
+        return
+      }
+
+      setSubmitting(false)
+      const errorMsg = getErrorMessage(apiError, result.error || 'Use an account assigned to this portal.')
+      toast.error(errorMsg)
+      return
+    }
+
+    const result = authenticateDemoUser(values.email, values.password, db)
     if (result.error || result.user.role !== expectedRole) {
       setSubmitting(false)
       toast.error(result.error || 'Use an account assigned to this portal.')

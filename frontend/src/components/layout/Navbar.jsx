@@ -32,10 +32,15 @@ export default function Navbar({ role, onOpenSidebar }) {
 
   useClickOutside(profileRef, () => setProfileOpen(false), profileOpen)
 
-  const unread = useMemo(
-    () => unreadNotificationCount(db, user),
-    [db, user],
-  )
+  const unread = useMemo(() => {
+    if (user?.isBackend) {
+      const key = `${user.role}:${user.id}`
+      return (db.notifications || []).filter(
+        (item) => !(item.readBy || []).includes(key),
+      ).length
+    }
+    return unreadNotificationCount(db, user)
+  }, [db, user])
 
   const title = PAGE_TITLES[location.pathname] || (
     location.pathname.includes('/parent/application/')

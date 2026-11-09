@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Environment configuration and local secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.secret
+*.credentials
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Test output and coverage
+coverage/
+.nyc_output/
+
+# Build output
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+storage/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.swp
+*.swo
+*~
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

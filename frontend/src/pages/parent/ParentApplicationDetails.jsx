@@ -71,7 +71,10 @@ export default function ParentApplicationDetails() {
     [db, user?.id],
   )
   const leave = leaves.find(
-    (item) => item.id.toLowerCase() === String(id || '').toLowerCase(),
+    (item) =>
+      item.id.toLowerCase() === String(id || '').toLowerCase() ||
+      (item.applicationNumber &&
+        item.applicationNumber.toLowerCase() === String(id || '').toLowerCase()),
   )
 
   if (!leave) {

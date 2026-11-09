@@ -60,7 +60,7 @@ export default function ReopenDialog({ open, leave, onClose, onConfirm }) {
             Application
           </p>
           <p className="mt-1 text-sm font-semibold text-slate-800">
-            {leave.id} · {leave.studentName}
+            {leave.applicationNumber || leave.id} · {leave.studentName}
           </p>
           <p className="mt-0.5 text-xs text-slate-500">
             {leave.leaveType} · {leave.fromDate} to {leave.toDate}

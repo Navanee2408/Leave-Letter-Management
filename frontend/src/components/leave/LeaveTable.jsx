@@ -28,7 +28,7 @@ export default function LeaveTable({
       header: 'Application',
       render: (leave) => (
         <div>
-          <p className="font-semibold text-navy-900">{leave.id}</p>
+          <p className="font-semibold text-navy-900">{leave.applicationNumber || leave.id}</p>
           <p className="mt-0.5 text-[11px] text-slate-400">
             Submitted {formatDate(leave.submittedAt)}
           </p>

@@ -30,7 +30,40 @@ export default function AccountsPage() {
 
   const accounts = useMemo(
     () =>
-      getDemoAccounts(db).map((credential) => {
+      (user?.isBackend
+        ? [
+            {
+              id: user?.id || 'admin-1',
+              name: user?.name || 'Administrator',
+              email: user?.email || 'admin@example.com',
+              role: 'ADMIN',
+              status: db.adminStatus || user?.status || 'active',
+              department: null,
+              childCount: 0,
+            },
+            ...(db.hods || []).map((h) => ({
+              ...h,
+              role: 'HOD',
+              status: h.status || 'active',
+              department: (db.departments || []).find((d) => d.id === h.departmentId),
+              childCount: 0,
+            })),
+            ...(db.tutors || []).map((t) => ({
+              ...t,
+              role: 'CLASS_TUTOR',
+              status: t.status || 'active',
+              department: (db.departments || []).find((d) => d.id === t.departmentId),
+              childCount: 0,
+            })),
+            ...(db.parents || []).map((p) => ({
+              ...p,
+              role: 'PARENT',
+              status: p.status || 'active',
+              department: null,
+              childCount: p.childIds?.length || 0,
+            })),
+          ]
+        : getDemoAccounts(db)).map((credential) => {
         const { password: _password, ...safeCredential } = credential
         const entity =
           credential.role === 'ADMIN'
@@ -51,7 +84,7 @@ export default function AccountsPage() {
           childCount: account.childIds?.length || 0,
         }
       }),
-    [db],
+    [db, user],
   )
 
   const filtered = useMemo(() => {

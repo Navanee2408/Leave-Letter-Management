@@ -63,6 +63,7 @@ export default function LeaveApplicationForm({
             name: documentFile.name,
             type: documentFile.type,
             size: documentFile.size,
+            file: documentFile,
           }
         : null,
     })

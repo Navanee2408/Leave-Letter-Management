@@ -42,7 +42,7 @@ export default function NotificationsPage() {
   const role = user?.role
   const roleLabel = ROLE_LABELS[role] || 'Account'
   const notifications = useMemo(
-    () => notificationsFor(db, user),
+    () => (user?.isBackend ? db.notifications || [] : notificationsFor(db, user)),
     [db, user],
   )
 

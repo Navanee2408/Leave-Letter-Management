@@ -27,14 +27,17 @@ export default function NotificationPanel({ open, onClose, user }) {
   useClickOutside(ref, onClose, open)
 
   const notifications = useMemo(
-    () => notificationsFor(db, user).slice(0, 6),
+    () =>
+      (user?.isBackend ? db.notifications || [] : notificationsFor(db, user)).slice(
+        0,
+        6,
+      ),
     [db, user],
   )
   const unread = useMemo(() => {
     const key = recipientKeyForUser(user)
-    return notificationsFor(db, user).filter(
-      (item) => !(item.readBy || []).includes(key),
-    ).length
+    const list = user?.isBackend ? db.notifications || [] : notificationsFor(db, user)
+    return list.filter((item) => !(item.readBy || []).includes(key)).length
   }, [db, user])
 
   const openNotification = (notification) => {
