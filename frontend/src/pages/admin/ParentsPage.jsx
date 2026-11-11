@@ -105,22 +105,22 @@ export default function ParentsPage() {
     },
     {
       name: 'studentId',
-      label: 'Linked student',
+      label: 'Linked student (optional)',
       type: 'select',
       hiddenWhenEditing: true,
-      placeholder: 'Select student (or enter admission number)',
+      placeholder: 'No student linked (you can link later)',
       options: childOptions.map((item) => ({
         value: item.value,
         label: item.label,
       })),
-      hint: 'Select an existing student record.',
+      hint: 'Optional. You can link this record later by editing this parent or the student.',
     },
     {
       name: 'registerNumber',
-      label: 'Student admission number',
+      label: 'Student admission number (optional)',
       hiddenWhenEditing: true,
-      placeholder: 'e.g. REG202601',
-      hint: 'Required if no student is selected from the dropdown.',
+      placeholder: 'e.g. REG202601 (optional)',
+      hint: 'Optional. Enter an admission number only to link an existing student right now.',
     },
     {
       name: 'status',
@@ -150,13 +150,14 @@ export default function ParentsPage() {
     },
     {
       name: 'childIds',
-      label: 'Linked children',
+      label: 'Linked children (optional)',
       type: 'checkbox-group',
       hidden: (_values, editing) => !editing?.id,
       full: true,
       columns: 2,
+      emptyText: 'No students exist yet. You can create student records first and link them later.',
       options: childOptions,
-      hint: 'Only linked children can be selected by this parent/guardian when submitting leave applications.',
+      hint: 'Select or unselect students to link with this parent/guardian.',
     },
   ]
 
@@ -296,10 +297,7 @@ export default function ParentsPage() {
             }
             const hasStudent = Boolean(values.studentId)
             const trimmedReg = (values.registerNumber || '').trim()
-            if (!hasStudent && !trimmedReg) {
-              errors.registerNumber =
-                'Select a linked student or enter the student admission number.'
-            } else if (hasStudent && trimmedReg) {
+            if (hasStudent && trimmedReg) {
               const selectedStudent = db.students.find(
                 (student) => student.id === values.studentId,
               )

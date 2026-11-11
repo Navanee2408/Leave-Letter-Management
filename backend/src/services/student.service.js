@@ -1,8 +1,13 @@
-import { ACCOUNT_STATUS, ROLES } from '../constants/index.js'
+import {
+  ACCOUNT_STATUS,
+  RELATIONSHIP_TYPES,
+  ROLES,
+} from '../constants/index.js'
 import { Class } from '../models/Class.js'
 import { Department } from '../models/Department.js'
 import { ParentStudent } from '../models/ParentStudent.js'
 import { Student } from '../models/Student.js'
+import { User } from '../models/User.js'
 import { AppError } from '../utils/AppError.js'
 import {
   isDuplicateKeyError,
@@ -105,10 +110,25 @@ async function populateStudent(student) {
   return student
 }
 
+async function resolveParentOrThrow(parentId) {
+  const parent = await User.findOne({ _id: parentId, role: ROLES.PARENT })
+
+  if (!parent) {
+    throw new AppError('Parent account not found', 404)
+  }
+
+  return parent
+}
+
 export async function createStudent(data) {
   await resolveClassAndDepartment(data.department, data.class)
   await assertRegisterNumberAvailable(data.registerNumber)
   await assertStudentEmailAvailable(data.email)
+
+  let linkedParent = null
+  if (data.parentId) {
+    linkedParent = await resolveParentOrThrow(data.parentId)
+  }
 
   const payload = {
     fullName: data.fullName,
@@ -125,7 +145,17 @@ export async function createStudent(data) {
 
   try {
     student = await Student.create(payload)
+    if (linkedParent) {
+      await ParentStudent.create({
+        parent: linkedParent._id,
+        student: student._id,
+        relationship: data.relationship || RELATIONSHIP_TYPES.GUARDIAN,
+      })
+    }
   } catch (error) {
+    if (student?._id) {
+      await Student.deleteOne({ _id: student._id }).catch(() => {})
+    }
     if (isDuplicateKeyError(error)) throw studentConflict(error)
     throw error
   }
@@ -262,6 +292,11 @@ export async function updateStudent(id, updates) {
 
   await resolveClassAndDepartment(finalDepartmentId, finalClassId)
 
+  let linkedParent = null
+  if (updates.parentId) {
+    linkedParent = await resolveParentOrThrow(updates.parentId)
+  }
+
   if (updates.fullName !== undefined) student.fullName = updates.fullName
   if (updates.registerNumber !== undefined) {
     student.registerNumber = updates.registerNumber
@@ -276,6 +311,29 @@ export async function updateStudent(id, updates) {
   } catch (error) {
     if (isDuplicateKeyError(error)) throw studentConflict(error)
     throw error
+  }
+
+  if (updates.parentId === null) {
+    await ParentStudent.deleteMany({ student: student._id })
+  } else if (linkedParent) {
+    const existingLink = await ParentStudent.findOne({
+      parent: linkedParent._id,
+      student: student._id,
+    })
+
+    if (!existingLink) {
+      await ParentStudent.create({
+        parent: linkedParent._id,
+        student: student._id,
+        relationship: updates.relationship || RELATIONSHIP_TYPES.GUARDIAN,
+      })
+    } else if (
+      updates.relationship &&
+      existingLink.relationship !== updates.relationship
+    ) {
+      existingLink.relationship = updates.relationship
+      await existingLink.save()
+    }
   }
 
   return populateStudent(student)

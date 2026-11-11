@@ -31,6 +31,12 @@ const phoneSchema = z
   .min(1, 'Phone number must not be empty')
   .max(30, 'Phone number must be 30 characters or fewer')
 
+function emptyToUndefined(value) {
+  if (value === null) return undefined
+  if (typeof value === 'string' && value.trim() === '') return undefined
+  return value
+}
+
 export const createParentSchema = z
   .object({
     fullName: fullNameSchema,
@@ -43,14 +49,20 @@ export const createParentSchema = z
       .max(300, 'Address must be 300 characters or fewer')
       .optional(),
     accountStatus: accountStatusSchema.optional(),
-    studentId: objectIdSchema.optional(),
-    registerNumber: z
-      .string()
-      .trim()
-      .min(1, 'Student register number cannot be empty')
-      .max(60, 'Register number must be 60 characters or fewer')
-      .optional(),
-    relationship: z.enum(RELATIONSHIP_TYPE_VALUES).optional(),
+    studentId: z.preprocess(emptyToUndefined, objectIdSchema.optional()),
+    registerNumber: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .trim()
+        .min(1, 'Student register number cannot be empty')
+        .max(60, 'Register number must be 60 characters or fewer')
+        .optional(),
+    ),
+    relationship: z.preprocess(
+      emptyToUndefined,
+      z.enum(RELATIONSHIP_TYPE_VALUES).optional(),
+    ),
   })
   .strict()
 

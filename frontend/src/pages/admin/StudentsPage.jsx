@@ -137,15 +137,14 @@ export default function StudentsPage() {
     },
     {
       name: 'parentId',
-      label: 'Linked parent / guardian',
+      label: 'Linked parent / guardian (optional)',
       type: 'select',
-      required: true,
-      placeholder: 'No parent linked',
+      placeholder: 'No parent linked (you can link later)',
       options: db.parents.map((parent) => ({
         value: parent.id,
         label: `${parent.name} · ${parent.email}`,
       })),
-      hint: 'The parent can submit leave only for linked children.',
+      hint: 'Optional. You can link this record later by editing the student or parent.',
     },
     {
       name: 'status',
@@ -318,8 +317,11 @@ export default function StudentsPage() {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
           errors.email = 'Enter a valid student email address.'
         }
-        if (!db.parents.some((parent) => parent.id === values.parentId)) {
-          errors.parentId = 'Select a linked parent or guardian.'
+        if (
+          values.parentId &&
+          !db.parents.some((parent) => parent.id === values.parentId)
+        ) {
+          errors.parentId = 'Select a valid parent or guardian.'
         }
         return errors
       }}

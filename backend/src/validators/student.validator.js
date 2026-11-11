@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { RELATIONSHIP_TYPE_VALUES } from '../constants/index.js'
 import {
   accountStatusSchema,
   objectIdSchema,
@@ -32,6 +33,17 @@ const phoneSchema = z
   .min(1, 'Phone number must not be empty')
   .max(30, 'Phone number must be 30 characters or fewer')
 
+function emptyToUndefined(value) {
+  if (value === null) return undefined
+  if (typeof value === 'string' && value.trim() === '') return undefined
+  return value
+}
+
+function emptyToNull(value) {
+  if (typeof value === 'string' && value.trim() === '') return null
+  return value
+}
+
 export const createStudentSchema = z
   .object({
     fullName: fullNameSchema,
@@ -40,6 +52,11 @@ export const createStudentSchema = z
     phone: phoneSchema.optional(),
     department: objectIdSchema,
     class: objectIdSchema,
+    parentId: z.preprocess(emptyToUndefined, objectIdSchema.optional()),
+    relationship: z.preprocess(
+      emptyToUndefined,
+      z.enum(RELATIONSHIP_TYPE_VALUES).optional(),
+    ),
   })
   .strict()
 
@@ -51,6 +68,11 @@ export const updateStudentSchema = z
     phone: phoneSchema.optional(),
     department: objectIdSchema.optional(),
     class: objectIdSchema.optional(),
+    parentId: z.preprocess(emptyToNull, objectIdSchema.nullable().optional()),
+    relationship: z.preprocess(
+      emptyToUndefined,
+      z.enum(RELATIONSHIP_TYPE_VALUES).optional(),
+    ),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, {

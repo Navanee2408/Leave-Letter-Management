@@ -644,21 +644,18 @@ export function DataProvider({ children }) {
     async (payload) => {
       if (isBackend) {
         try {
-          const res = await studentApi.create({
+          await studentApi.create({
             fullName: payload.name || payload.fullName,
             registerNumber: payload.registerNumber,
             department: payload.departmentId || payload.department,
             class: payload.classId || payload.class,
             phone: payload.phone || undefined,
             email: payload.email,
+            parentId: payload.parentId || undefined,
+            relationship: payload.parentId
+              ? payload.relationship || 'Guardian'
+              : undefined,
           })
-          const studentId = res.student?.id || res.student?._id
-          if (studentId && payload.parentId) {
-            await parentApi.addChild(payload.parentId, {
-              studentId,
-              relationship: payload.relationship || 'Guardian',
-            }).catch(() => {})
-          }
           await refreshBackendData()
           return
         } catch (err) {
@@ -680,6 +677,19 @@ export function DataProvider({ children }) {
           if (payload.status) {
             await studentApi.setStatus(id, payload.status.toUpperCase())
           }
+          const existingStudent = db.students.find((s) => s.id === id)
+          const previousParentId = existingStudent?.parentId || null
+          const hasParentField = payload.parentId !== undefined
+          const nextParentId = payload.parentId || null
+
+          if (
+            hasParentField &&
+            previousParentId &&
+            nextParentId !== previousParentId
+          ) {
+            await parentApi.removeChild(previousParentId, id)
+          }
+
           const updateData = {}
           if (payload.name || payload.fullName) updateData.fullName = payload.name || payload.fullName
           if (payload.registerNumber) updateData.registerNumber = payload.registerNumber
@@ -689,16 +699,18 @@ export function DataProvider({ children }) {
           if (payload.classId || payload.class) {
             updateData.class = payload.classId || payload.class
           }
-          if (payload.phone) updateData.phone = payload.phone
+          if (payload.phone !== undefined) updateData.phone = payload.phone || undefined
           if (payload.email) updateData.email = payload.email
+          if (
+            hasParentField &&
+            nextParentId &&
+            nextParentId !== previousParentId
+          ) {
+            updateData.parentId = nextParentId
+            updateData.relationship = payload.relationship || 'Guardian'
+          }
           if (Object.keys(updateData).length > 0) {
             await studentApi.update(id, updateData)
-          }
-          if (payload.parentId) {
-            await parentApi.addChild(payload.parentId, {
-              studentId: id,
-              relationship: payload.relationship || 'Guardian',
-            }).catch(() => {})
           }
           await refreshBackendData()
           return
@@ -711,7 +723,7 @@ export function DataProvider({ children }) {
       }
       commit(setDb, (current) => demoService.updateStudent(current, id, payload))
     },
-    [isBackend, refreshBackendData],
+    [isBackend, db.students, refreshBackendData],
   )
 
   const deleteStudent = useCallback(
