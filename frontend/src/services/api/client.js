@@ -105,6 +105,13 @@ apiClient.interceptors.response.use(
 )
 
 export function getErrorMessage(error, fallback = 'An unexpected error occurred') {
+  const details = error?.response?.data?.details
+  if (Array.isArray(details) && details.length > 0) {
+    const messages = details.map((item) => item?.message).filter(Boolean)
+    if (messages.length > 0) {
+      return messages.join(' · ')
+    }
+  }
   if (error?.response?.data?.message) {
     return error.response.data.message
   }

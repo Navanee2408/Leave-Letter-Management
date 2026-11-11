@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { UsersRound } from 'lucide-react'
 import CrudPage from '../../components/admin/CrudPage'
+import CreatedCredentialsModal from '../../components/admin/CreatedCredentialsModal'
 import Avatar from '../../components/ui/Avatar'
 import { useData } from '../../hooks/useData'
 import { childrenForParent, classTitle } from '../../services/selectors'
@@ -27,6 +28,7 @@ export default function ParentsPage() {
   } = useData()
   const [status, setStatus] = useState('')
   const [childFilter, setChildFilter] = useState('')
+  const [createdCredentials, setCreatedCredentials] = useState(null)
 
   const rows = useMemo(
     () =>
@@ -74,7 +76,7 @@ export default function ParentsPage() {
   const fields = [
     {
       name: 'name',
-      label: 'Parent / guardian name',
+      label: 'Parent full name',
       required: true,
       placeholder: 'Full name',
     },
@@ -88,15 +90,54 @@ export default function ParentsPage() {
     {
       name: 'phone',
       label: 'Phone number',
-      required: true,
       placeholder: '+1-202-555-0100',
     },
     {
-      name: 'status',
-      label: 'Status',
+      name: 'relationship',
+      label: 'Relationship',
       type: 'select',
       required: true,
+      defaultValue: 'Guardian',
+      options: ['Father', 'Mother', 'Guardian'].map((item) => ({
+        value: item,
+        label: item,
+      })),
+    },
+    {
+      name: 'studentId',
+      label: 'Linked student',
+      type: 'select',
+      hiddenWhenEditing: true,
+      placeholder: 'Select student (or enter admission number)',
+      options: childOptions.map((item) => ({
+        value: item.value,
+        label: item.label,
+      })),
+      hint: 'Select an existing student record.',
+    },
+    {
+      name: 'registerNumber',
+      label: 'Student admission number',
+      hiddenWhenEditing: true,
+      placeholder: 'e.g. REG202601',
+      hint: 'Required if no student is selected from the dropdown.',
+    },
+    {
+      name: 'status',
+      label: 'Account status',
+      type: 'select',
+      required: true,
+      defaultValue: 'active',
       options: ACCOUNT_STATUS_OPTIONS,
+    },
+    {
+      name: 'password',
+      label: 'Temporary password',
+      type: 'password',
+      requiredWhenCreating: true,
+      hiddenWhenEditing: true,
+      placeholder: 'Enter temporary password (minimum 8 characters)',
+      hint: 'Parent will be required to change this temporary password on first login.',
     },
     {
       name: 'address',
@@ -111,10 +152,11 @@ export default function ParentsPage() {
       name: 'childIds',
       label: 'Linked children',
       type: 'checkbox-group',
+      hidden: (_values, editing) => !editing?.id,
       full: true,
       columns: 2,
       options: childOptions,
-      hint: 'Only linked children can be selected by this guardian when applying for leave. Linking a student here moves them from any previous guardian link.',
+      hint: 'Only linked children can be selected by this parent/guardian when submitting leave applications.',
     },
   ]
 
@@ -185,126 +227,147 @@ export default function ParentsPage() {
   ]
 
   return (
-    <CrudPage
-      eyebrow="College administration"
-      title="Parents & guardians"
-      description="Maintain guardian contact details and the child links that control who can submit leave applications."
-      entityLabel="Parent"
-      rows={rows}
-      columns={columns}
-      fields={fields}
-      searchText={(row) =>
-        `${row.name} ${row.email} ${row.phone} ${row.children
-          .map((child) => `${child.name} ${child.registerNumber}`)
-          .join(' ')}`
-      }
-      searchPlaceholder="Search parents or children…"
-      filters={[
-        {
-          id: 'parent-status-filter',
-          label: 'Account status',
-          value: status,
-          onChange: setStatus,
-          options: ACCOUNT_STATUS_OPTIONS,
-          allLabel: 'All statuses',
-        },
-        {
-          id: 'parent-child-filter',
-          label: 'Linked child',
-          value: childFilter,
-          onChange: setChildFilter,
-          options: db.students.map((student) => ({
-            value: student.id,
-            label: student.name,
-          })),
-          allLabel: 'All children',
-        },
-      ]}
-      filterKey={`${status}-${childFilter}`}
-      initialValues={(row) => ({
-        name: row?.name || '',
-        email: row?.email || '',
-        phone: row?.phone || '',
-        status: row?.status || 'active',
-        address: row?.address || '',
-        childIds: row?.childIds || [],
-      })}
-      validate={(values, editing) => {
-        const errors = {}
-        const email = values.email.trim().toLowerCase()
-        if (
-          db.parents.some(
-            (parent) =>
-              parent.id !== editing?.id && parent.email.toLowerCase() === email,
-          )
-        ) {
-          errors.email = 'This parent email is already in use.'
+    <>
+      <CrudPage
+        eyebrow="College administration"
+        title="Parents & guardians"
+        description="Maintain parent/guardian accounts and student links that control who can submit leave applications."
+        entityLabel="Parent"
+        rows={rows}
+        columns={columns}
+        fields={fields}
+        searchText={(row) =>
+          `${row.name} ${row.email} ${row.phone} ${row.children
+            .map((child) => `${child.name} ${child.registerNumber}`)
+            .join(' ')}`
         }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
-          errors.email = 'Enter a valid email address.'
-        }
-        const clash = (values.childIds || []).find((childId) => {
-          const student = db.students.find((item) => item.id === childId)
-          if (!student) return false
-          if (!student.parentId || student.parentId === editing?.id) return false
-          return (
-            student.parentId !== editing?.id &&
+        searchPlaceholder="Search parents or children…"
+        filters={[
+          {
+            id: 'parent-status-filter',
+            label: 'Account status',
+            value: status,
+            onChange: setStatus,
+            options: ACCOUNT_STATUS_OPTIONS,
+            allLabel: 'All statuses',
+          },
+          {
+            id: 'parent-child-filter',
+            label: 'Linked child',
+            value: childFilter,
+            onChange: setChildFilter,
+            options: db.students.map((student) => ({
+              value: student.id,
+              label: student.name,
+            })),
+            allLabel: 'All children',
+          },
+        ]}
+        filterKey={`${status}-${childFilter}`}
+        initialValues={(row) => ({
+          name: row?.name || '',
+          email: row?.email || '',
+          phone: row?.phone || '',
+          relationship: row?.relationship || 'Guardian',
+          studentId: '',
+          registerNumber: '',
+          status: row?.status || 'active',
+          password: '',
+          address: row?.address || '',
+          childIds: row?.childIds || [],
+        })}
+        validate={(values, editing) => {
+          const errors = {}
+          const email = values.email.trim().toLowerCase()
+          if (
             db.parents.some(
-              (item) =>
-                item.id !== editing?.id &&
-                (item.childIds || []).includes(student.id),
+              (parent) =>
+                parent.id !== editing?.id && parent.email.toLowerCase() === email,
             )
-          )
-        })
-        if (clash) {
-          const student = db.students.find((item) => item.id === clash)
-          const owner = db.parents.find(
-            (item) => item.id === student?.parentId,
-          )
-          errors.childIds = `${student?.name || 'This student'} is already linked to ${
-            owner?.name || 'another guardian'
-          }. Unlink the student from that guardian first.`
+          ) {
+            errors.email = 'This parent email is already in use.'
+          }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+            errors.email = 'Enter a valid email address.'
+          }
+          if (!editing?.id) {
+            if (!values.password || values.password.length < 8) {
+              errors.password = 'Temporary password must be at least 8 characters.'
+            }
+            const hasStudent = Boolean(values.studentId)
+            const trimmedReg = (values.registerNumber || '').trim()
+            if (!hasStudent && !trimmedReg) {
+              errors.registerNumber =
+                'Select a linked student or enter the student admission number.'
+            } else if (hasStudent && trimmedReg) {
+              const selectedStudent = db.students.find(
+                (student) => student.id === values.studentId,
+              )
+              if (
+                selectedStudent &&
+                selectedStudent.registerNumber.toUpperCase() !==
+                  trimmedReg.toUpperCase()
+              ) {
+                errors.registerNumber =
+                  'Admission number does not match the selected student.'
+              }
+            }
+          }
+          return errors
+        }}
+        onCreate={async (values) => {
+          const created = await addParent({
+            name: values.name.trim(),
+            email: values.email.trim(),
+            phone: (values.phone || '').trim(),
+            relationship: values.relationship || 'Guardian',
+            studentId: values.studentId || undefined,
+            registerNumber: (values.registerNumber || '').trim() || undefined,
+            status: values.status || 'active',
+            password: values.password,
+            address: (values.address || '').trim(),
+          })
+          setCreatedCredentials({
+            roleLabel: 'Parent / Guardian',
+            name: created?.fullName || created?.name || values.name.trim(),
+            email: created?.email || values.email.trim(),
+            temporaryPassword: values.password,
+          })
+        }}
+        onUpdate={(id, values) =>
+          updateParent(id, {
+            name: values.name.trim(),
+            email: values.email.trim(),
+            phone: (values.phone || '').trim(),
+            relationship: values.relationship || 'Guardian',
+            status: values.status,
+            address: (values.address || '').trim(),
+            childIds: values.childIds || [],
+          })
         }
-        return errors
-      }}
-      onCreate={(values) =>
-        addParent({
-          ...values,
-          name: values.name.trim(),
-          email: values.email.trim(),
-          phone: values.phone.trim(),
-          address: (values.address || '').trim(),
-          childIds: values.childIds || [],
-        })
-      }
-      onUpdate={(id, values) =>
-        updateParent(id, {
-          ...values,
-          name: values.name.trim(),
-          email: values.email.trim(),
-          phone: values.phone.trim(),
-          address: (values.address || '').trim(),
-          childIds: values.childIds || [],
-        })
-      }
-      onDelete={deleteParent}
-      deleteGuard={(row) => {
-        if (row.children.length) {
-          return 'Unlink this guardian from their children before deleting the parent record.'
+        onDelete={deleteParent}
+        deleteGuard={(row) => {
+          if (row.children.length) {
+            return 'Unlink this guardian from their children before deleting the parent record.'
+          }
+          if (row.leaveCount) {
+            return 'This parent has leave applications. Keep the record to preserve application history.'
+          }
+          return null
+        }}
+        extraActions={
+          <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10.5px] font-medium text-slate-500 sm:inline-flex">
+            <UsersRound className="h-3 w-3" aria-hidden="true" />
+            {db.parents.length} guardians
+          </span>
         }
-        if (row.leaveCount) {
-          return 'This parent has leave applications. Keep the record to preserve application history.'
-        }
-        return null
-      }}
-      extraActions={
-        <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10.5px] font-medium text-slate-500 sm:inline-flex">
-          <UsersRound className="h-3 w-3" aria-hidden="true" />
-          {db.parents.length} guardians
-        </span>
-      }
-      emptyTitle="No parents found"
-      emptyDescription="Add a guardian, or adjust the status and linked-child filters."
-    />
+        emptyTitle="No parents found"
+        emptyDescription="Add a guardian, or adjust the status and linked-child filters."
+      />
+      <CreatedCredentialsModal
+        credentials={createdCredentials}
+        onClose={() => setCreatedCredentials(null)}
+      />
+    </>
   )
 }

@@ -9,6 +9,7 @@ import {
 } from '../controllers/hod.controller.js'
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import {
   validateBody,
   validateParams,
@@ -26,7 +27,11 @@ const hodRouter = Router()
 
 // Every HOD management operation is ADMIN-only. HODs cannot modify their own
 // role, department, or account status through these routes.
-hodRouter.use(authenticate, authorizeRoles(ROLES.ADMIN))
+hodRouter.use(
+  authenticate,
+  requirePasswordChanged,
+  authorizeRoles(ROLES.ADMIN),
+)
 
 hodRouter.post('/', validateBody(createHodSchema), createHod)
 

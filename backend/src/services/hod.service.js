@@ -10,7 +10,7 @@ import {
 import { escapeRegExp } from '../utils/escapeRegExp.js'
 
 const HOD_SELECT_FIELDS =
-  'fullName email phone employeeId role department accountStatus lastLogin createdAt updatedAt'
+  'fullName email phone employeeId designation role department mustChangePassword accountStatus lastLogin createdAt updatedAt'
 const DEPARTMENT_POPULATE_FIELDS = 'name code description status createdAt updatedAt'
 
 const DUPLICATE_MESSAGES = {
@@ -186,23 +186,30 @@ export async function createHod(data) {
   await assertEmailAvailable(data.email)
   await assertEmployeeIdAvailable(data.employeeId)
 
+  const accountStatus = data.accountStatus ?? ACCOUNT_STATUS.ACTIVE
+
   const payload = {
     fullName: data.fullName,
     email: data.email,
     password: data.password,
     role: ROLES.HOD,
     department: department._id,
-    accountStatus: ACCOUNT_STATUS.ACTIVE,
+    accountStatus,
+    mustChangePassword: true,
   }
 
   if (data.phone) payload.phone = data.phone
   if (data.employeeId) payload.employeeId = data.employeeId
+  if (data.designation) payload.designation = data.designation
 
   try {
-    const hod = await performActiveHodReplacement({
-      departmentId: department._id,
-      action: (session) => createUserDocument(payload, session),
-    })
+    const hod =
+      accountStatus === ACCOUNT_STATUS.ACTIVE
+        ? await performActiveHodReplacement({
+            departmentId: department._id,
+            action: (session) => createUserDocument(payload, session),
+          })
+        : await createUserDocument(payload)
 
     await hod.populate('department', DEPARTMENT_POPULATE_FIELDS)
 
@@ -297,6 +304,7 @@ export async function updateHod(id, updates) {
     if (updates.email !== undefined) hod.email = updates.email
     if (updates.phone !== undefined) hod.phone = updates.phone
     if (updates.employeeId !== undefined) hod.employeeId = updates.employeeId
+    if (updates.designation !== undefined) hod.designation = updates.designation
     if (updates.department !== undefined) hod.department = targetDepartmentId
 
     await (session ? hod.save({ session }) : hod.save())

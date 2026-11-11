@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getErrorMessage } from '../../services/api/client'
 import PageHeader from '../ui/PageHeader'
 import Button from '../ui/Button'
 import DataTable from '../ui/DataTable'
@@ -32,11 +33,26 @@ function buildInitial(fields, initialValues, row) {
   }, {})
 }
 
+function isFieldHidden(field, values, editing) {
+  if (field.hiddenWhenEditing && Boolean(editing?.id)) return true
+  if (typeof field.hidden === 'function') return Boolean(field.hidden(values, editing))
+  return Boolean(field.hidden)
+}
+
+function isFieldRequired(field, values, editing) {
+  if (typeof field.required === 'function') {
+    return Boolean(field.required(values, editing))
+  }
+  if (field.requiredWhenCreating && !editing?.id) return true
+  return Boolean(field.required)
+}
+
 function validateValues(fields, values, validate, editing) {
   const errors = {}
   fields.forEach((field) => {
+    if (isFieldHidden(field, values, editing)) return
     const value = values[field.name]
-    if (field.required) {
+    if (isFieldRequired(field, values, editing)) {
       const empty =
         value === undefined ||
         value === null ||
@@ -50,6 +66,13 @@ function validateValues(fields, values, validate, editing) {
 }
 
 function FieldRenderer({ field, value, error, onChange, formValues, editing }) {
+  const [showPassword, setShowPassword] = useState(false)
+
+  if (isFieldHidden(field, formValues, editing)) {
+    return null
+  }
+
+  const required = isFieldRequired(field, formValues, editing)
   const className = field.full ? 'sm:col-span-2' : ''
   const options =
     typeof field.options === 'function'
@@ -61,7 +84,7 @@ function FieldRenderer({ field, value, error, onChange, formValues, editing }) {
       <FormSelect
         label={field.label}
         name={field.name}
-        required={field.required}
+        required={required}
         options={options}
         placeholder={field.placeholder || 'Select an option'}
         value={value ?? ''}
@@ -79,7 +102,7 @@ function FieldRenderer({ field, value, error, onChange, formValues, editing }) {
       <FormTextarea
         label={field.label}
         name={field.name}
-        required={field.required}
+        required={required}
         rows={field.rows || 3}
         maxLength={field.maxLength}
         valueLength={String(value || '').length}
@@ -110,19 +133,43 @@ function FieldRenderer({ field, value, error, onChange, formValues, editing }) {
     )
   }
 
+  const isPasswordField = field.type === 'password'
+  const inputType = isPasswordField
+    ? showPassword
+      ? 'text'
+      : 'password'
+    : field.type || 'text'
+
   return (
     <FormInput
       label={field.label}
       name={field.name}
-      type={field.type || 'text'}
-      required={field.required}
+      type={inputType}
+      required={required}
       value={value ?? ''}
       onChange={(event) => onChange(field.name, event.target.value)}
       error={error}
       hint={field.hint}
       placeholder={field.placeholder}
       maxLength={field.maxLength}
+      autoComplete={field.autoComplete || (isPasswordField ? 'new-password' : undefined)}
       readOnly={field.readOnlyWhenEditing && Boolean(editing?.id)}
+      rightElement={
+        isPasswordField ? (
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="text-slate-400 hover:text-slate-700"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        ) : undefined
+      }
       className={className}
     />
   )
@@ -221,8 +268,15 @@ export default function CrudPage({
     })
   }
 
+  const [formError, setFormError] = useState('')
+
+  useEffect(() => {
+    setFormError('')
+  }, [editing])
+
   const handleSubmit = async (event) => {
     event.preventDefault()
+    setFormError('')
     const nextErrors = validateValues(fields, values, validate, editing)
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors)
@@ -231,16 +285,27 @@ export default function CrudPage({
     }
 
     setSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 250))
-    if (editing?.id) {
-      onUpdate?.(editing.id, values)
-      toast.success(`${entityLabel} updated.`)
-    } else {
-      onCreate?.(values)
-      toast.success(`${entityLabel} added.`)
+    try {
+      if (editing?.id) {
+        await onUpdate?.(editing.id, values)
+        toast.success(`${entityLabel} updated.`)
+      } else {
+        await onCreate?.(values)
+        toast.success(`${entityLabel} added.`)
+      }
+      setEditing(null)
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        `Failed to ${editing?.id ? 'update' : 'create'} ${entityLabel.toLowerCase()}.`,
+      )
+      setFormError(message)
+      if (!error?._toastShown) {
+        toast.error(message)
+      }
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    setEditing(null)
   }
 
   const requestDelete = (row) => {
@@ -252,11 +317,19 @@ export default function CrudPage({
     setDeleteTarget(row)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return
-    onDelete?.(deleteTarget.id)
-    setDeleteTarget(null)
-    toast.success(`${entityLabel} deleted.`)
+    try {
+      await onDelete?.(deleteTarget.id)
+      setDeleteTarget(null)
+      toast.success(`${entityLabel} deleted.`)
+    } catch (error) {
+      if (!error?._toastShown) {
+        toast.error(
+          getErrorMessage(error, `Failed to delete ${entityLabel.toLowerCase()}.`),
+        )
+      }
+    }
   }
 
   const tableColumns = useMemo(
@@ -378,7 +451,7 @@ export default function CrudPage({
         description={
           editing?.id
             ? `Update the ${entityLabel.toLowerCase()} details below.`
-            : `Create a new ${entityLabel.toLowerCase()} record for the demo dataset.`
+            : `Create a new ${entityLabel.toLowerCase()} record.`
         }
         size="lg"
         footer={
@@ -402,6 +475,14 @@ export default function CrudPage({
           className="grid gap-4 sm:grid-cols-2"
           noValidate
         >
+          {formError && (
+            <div
+              role="alert"
+              className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+            >
+              {formError}
+            </div>
+          )}
           {fields.map((field) => (
             <FieldRenderer
               key={field.name}
@@ -423,7 +504,7 @@ export default function CrudPage({
         title={`Delete ${entityLabel.toLowerCase()}?`}
         description={`This will permanently remove ${
           deleteTarget?.name || `this ${entityLabel.toLowerCase()}`
-        } from the demo dataset stored in your browser.`}
+        } from the active records.`}
         confirmLabel="Delete record"
       >
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs leading-relaxed text-rose-800">

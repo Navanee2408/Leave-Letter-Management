@@ -53,6 +53,10 @@ async function authenticateSocket(socket, next) {
       return next(new Error('Account is inactive'))
     }
 
+    if (user.mustChangePassword) {
+      return next(new Error('Password change is required'))
+    }
+
     socket.data.user = {
       id: user.id,
       role: user.role,

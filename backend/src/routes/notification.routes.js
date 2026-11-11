@@ -8,6 +8,7 @@ import {
 } from '../controllers/notification.controller.js'
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import {
   validateBody,
   validateParams,
@@ -22,7 +23,7 @@ import {
 
 const notificationRouter = Router()
 
-notificationRouter.use(authenticate)
+notificationRouter.use(authenticate, requirePasswordChanged)
 notificationRouter.use(
   authorizeRoles(ROLES.ADMIN, ROLES.HOD, ROLES.TUTOR, ROLES.PARENT),
 )

@@ -42,10 +42,14 @@ test('dataTransformers converts backend formats to frontend entities', () => {
     fullName: 'Dr. Tutor',
     email: 'tutor@test.com',
     role: 'TUTOR',
+    designation: 'Assistant Professor',
+    mustChangePassword: true,
     assignedClasses: ['507f1f77bcf86cd799439012'],
   })
   assert.equal(tutor.name, 'Dr. Tutor')
   assert.equal(tutor.role, 'CLASS_TUTOR')
+  assert.equal(tutor.designation, 'Assistant Professor')
+  assert.equal(tutor.mustChangePassword, true)
   assert.equal(tutor.classIds[0], '507f1f77bcf86cd799439012')
 
   const leave = transformLeave({

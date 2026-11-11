@@ -164,3 +164,42 @@ export async function logoutUser(refreshToken) {
     // An invalid or expired refresh token has no active session to revoke.
   }
 }
+
+export async function changeUserPassword(
+  userId,
+  { currentPassword, newPassword },
+) {
+  const user = await User.findById(userId).select('+password')
+
+  if (!user) {
+    throw new AppError('Invalid or expired access token', 401)
+  }
+
+  if (user.accountStatus !== ACCOUNT_STATUS.ACTIVE) {
+    throw new AppError('Account is inactive', 403)
+  }
+
+  const matches = await user.comparePassword(currentPassword)
+
+  if (!matches) {
+    throw new AppError('Current password is incorrect', 400)
+  }
+
+  user.password = newPassword
+  user.mustChangePassword = false
+  await user.save()
+
+  await RefreshSession.updateMany(
+    { user: user._id, revokedAt: null },
+    { $set: { revokedAt: new Date() } },
+  )
+
+  const accessToken = signAccessToken(user)
+  const refreshToken = await createRefreshSession(user)
+
+  return {
+    user: user.toJSON(),
+    accessToken,
+    refreshToken,
+  }
+}

@@ -217,6 +217,11 @@ export default function LoginPage({ role }) {
       }
 
       setSubmitting(false)
+      if (user.mustChangePassword) {
+        toast('Please set a new password before continuing.')
+        navigate('/change-password', { replace: true })
+        return
+      }
       toast.success(`Signed in as ${user.name || user.fullName}.`)
       navigate(ROLE_HOME[expectedRole])
     } catch (apiError) {

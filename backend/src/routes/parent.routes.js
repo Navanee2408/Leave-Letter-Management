@@ -14,6 +14,7 @@ import {
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeParentAccess } from '../middleware/authorizeParentAccess.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import {
   validateBody,
   validateParams,
@@ -33,7 +34,7 @@ import {
 
 const parentRouter = Router()
 
-parentRouter.use(authenticate)
+parentRouter.use(authenticate, requirePasswordChanged)
 
 // Parent self-service route must be declared before the generic /:id route.
 parentRouter.get(

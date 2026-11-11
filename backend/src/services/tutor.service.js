@@ -11,7 +11,7 @@ import {
 import { escapeRegExp } from '../utils/escapeRegExp.js'
 
 const TUTOR_SELECT_FIELDS =
-  'fullName email phone employeeId role department assignedClasses accountStatus lastLogin createdAt updatedAt'
+  'fullName email phone employeeId designation role department assignedClasses mustChangePassword accountStatus lastLogin createdAt updatedAt'
 const DEPARTMENT_POPULATE_FIELDS = 'name code description status'
 const CLASS_POPULATE_FIELDS =
   'className year section department assignedTutor status createdAt updatedAt'
@@ -152,11 +152,13 @@ export async function createTutor(data) {
     role: ROLES.TUTOR,
     department: department._id,
     assignedClasses: classIds,
-    accountStatus: ACCOUNT_STATUS.ACTIVE,
+    accountStatus: data.accountStatus ?? ACCOUNT_STATUS.ACTIVE,
+    mustChangePassword: true,
   }
 
   if (data.phone) payload.phone = data.phone
   if (data.employeeId) payload.employeeId = data.employeeId
+  if (data.designation) payload.designation = data.designation
 
   let tutor
 
@@ -298,6 +300,7 @@ export async function updateTutor(id, updates) {
   if (updates.email !== undefined) tutor.email = updates.email
   if (updates.phone !== undefined) tutor.phone = updates.phone
   if (updates.employeeId !== undefined) tutor.employeeId = updates.employeeId
+  if (updates.designation !== undefined) tutor.designation = updates.designation
   if (updates.department !== undefined) tutor.department = updates.department
   tutor.assignedClasses = finalClassIds
 

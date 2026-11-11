@@ -184,7 +184,7 @@ export default function DepartmentsPage() {
       <CrudPage
       eyebrow="College administration"
       title="Departments"
-      description="Maintain the academic departments in the demo institution and keep their HOD contact details current."
+      description="Maintain academic departments and keep their HOD contact details current."
       entityLabel="Department"
       rows={rows}
       columns={columns}

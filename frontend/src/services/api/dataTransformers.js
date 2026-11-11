@@ -84,8 +84,10 @@ export function transformHod(raw) {
     employeeId: raw.employeeId || '',
     departmentId: String(raw.department?._id || raw.department?.id || raw.department || ''),
     status,
+    accountStatus: raw.accountStatus || status.toUpperCase(),
+    mustChangePassword: Boolean(raw.mustChangePassword),
     role: ROLES.HOD,
-    designation: 'Head of Department',
+    designation: raw.designation || 'Head of Department',
   }
 }
 
@@ -109,8 +111,10 @@ export function transformTutor(raw) {
       String(c?._id || c?.id || c),
     ),
     status,
+    accountStatus: raw.accountStatus || status.toUpperCase(),
+    mustChangePassword: Boolean(raw.mustChangePassword),
     role: ROLES.CLASS_TUTOR,
-    designation: 'Class Tutor',
+    designation: raw.designation || 'Class Tutor',
   }
 }
 
@@ -138,15 +142,25 @@ export function transformParent(raw, childIds = []) {
       ? raw.status.toLowerCase()
       : 'active'
 
+  const firstRelationship =
+    raw.relationship ||
+    (typeof childIds[0] === 'object' ? childIds[0]?.relationship : null) ||
+    'Guardian'
+
   return {
     id: String(raw._id || raw.id),
     name: raw.fullName || raw.name || '',
     fullName: raw.fullName || raw.name || '',
     email: raw.email,
     phone: raw.phone || '',
-    childIds: childIds.map((c) => String(c?._id || c?.id || c)),
-    relationship: raw.relationship || 'Father',
+    address: raw.address || '',
+    childIds: childIds.map((c) =>
+      String(c?.student?._id || c?.student?.id || c?.student || c?._id || c?.id || c),
+    ),
+    relationship: firstRelationship,
     status,
+    accountStatus: raw.accountStatus || status.toUpperCase(),
+    mustChangePassword: Boolean(raw.mustChangePassword),
     role: ROLES.PARENT,
   }
 }

@@ -37,6 +37,20 @@ export const createParentSchema = z
     email: emailSchema,
     password: passwordSchema,
     phone: phoneSchema.optional(),
+    address: z
+      .string()
+      .trim()
+      .max(300, 'Address must be 300 characters or fewer')
+      .optional(),
+    accountStatus: accountStatusSchema.optional(),
+    studentId: objectIdSchema.optional(),
+    registerNumber: z
+      .string()
+      .trim()
+      .min(1, 'Student register number cannot be empty')
+      .max(60, 'Register number must be 60 characters or fewer')
+      .optional(),
+    relationship: z.enum(RELATIONSHIP_TYPE_VALUES).optional(),
   })
   .strict()
 
@@ -45,6 +59,11 @@ export const updateParentSchema = z
     fullName: fullNameSchema.optional(),
     email: emailSchema.optional(),
     phone: phoneSchema.optional(),
+    address: z
+      .string()
+      .trim()
+      .max(300, 'Address must be 300 characters or fewer')
+      .optional(),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, {

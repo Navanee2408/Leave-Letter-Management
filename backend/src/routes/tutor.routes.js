@@ -12,6 +12,7 @@ import {
 } from '../controllers/tutor.controller.js'
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import {
   validateBody,
   validateParams,
@@ -28,7 +29,7 @@ import { tutorApprovedLeavesQuerySchema } from '../validators/leaveApplication.v
 
 const tutorRouter = Router()
 
-tutorRouter.use(authenticate)
+tutorRouter.use(authenticate, requirePasswordChanged)
 
 // Tutor self-service routes must be declared before the generic /:id route.
 tutorRouter.get(

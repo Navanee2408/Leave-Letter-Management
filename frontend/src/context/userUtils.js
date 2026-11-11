@@ -31,5 +31,8 @@ export function normalizeUser(rawUser) {
     department: rawUser.department || null,
     status,
     accountStatus,
+    mustChangePassword: Boolean(rawUser.mustChangePassword),
+    designation: rawUser.designation || '',
+    address: rawUser.address || '',
   }
 }

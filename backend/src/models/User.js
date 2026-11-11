@@ -69,6 +69,20 @@ const userSchema = new mongoose.Schema(
       enum: ACCOUNT_STATUS_VALUES,
       default: ACCOUNT_STATUS.ACTIVE,
     },
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
+    designation: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Designation cannot exceed 100 characters'],
+    },
+    address: {
+      type: String,
+      trim: true,
+      maxlength: [300, 'Address cannot exceed 300 characters'],
+    },
     lastLogin: {
       type: Date,
       default: null,
@@ -134,6 +148,7 @@ userSchema.set('toJSON', {
   versionKey: false,
   transform: (doc, ret) => {
     if (ret._id) ret.id = ret._id.toString()
+    ret.mustChangePassword = Boolean(ret.mustChangePassword)
     delete ret._id
     delete ret.password
     return ret

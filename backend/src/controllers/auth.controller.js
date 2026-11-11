@@ -1,4 +1,9 @@
-import { loginUser, logoutUser, refreshSession } from '../services/auth.service.js'
+import {
+  changeUserPassword,
+  loginUser,
+  logoutUser,
+  refreshSession,
+} from '../services/auth.service.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import {
   REFRESH_COOKIE_NAME,
@@ -55,5 +60,21 @@ export const getMe = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     user: req.user.toJSON(),
+  })
+})
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const { user, accessToken, refreshToken } = await changeUserPassword(
+    req.user._id,
+    req.body,
+  )
+
+  setRefreshCookie(res, refreshToken)
+
+  res.status(200).json({
+    success: true,
+    message: 'Password updated successfully',
+    accessToken,
+    user,
   })
 })

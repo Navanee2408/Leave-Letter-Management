@@ -26,6 +26,22 @@ test('API Client token management and error formatting', () => {
   const msg4 = getErrorMessage({}, 'Default fallback')
   assert.equal(msg4, 'Default fallback')
 
+  const msg5 = getErrorMessage({
+    response: {
+      data: {
+        message: 'Validation failed',
+        details: [
+          { field: 'email', message: 'A valid email address is required' },
+          { field: 'password', message: 'Password must be at least 8 characters' },
+        ],
+      },
+    },
+  })
+  assert.equal(
+    msg5,
+    'A valid email address is required · Password must be at least 8 characters',
+  )
+
   const unsubscribe = onAuthFailure(() => {})
   assert.equal(typeof unsubscribe, 'function')
   unsubscribe()

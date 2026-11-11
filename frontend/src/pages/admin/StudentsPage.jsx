@@ -72,7 +72,7 @@ export default function StudentsPage() {
       name: 'registerNumber',
       label: 'Register number',
       required: true,
-      placeholder: 'e.g. DEMO-STU-0001',
+      placeholder: 'e.g. REG202601',
       maxLength: 16,
     },
     {

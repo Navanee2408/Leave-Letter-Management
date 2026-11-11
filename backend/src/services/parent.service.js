@@ -10,7 +10,7 @@ import {
 import { escapeRegExp } from '../utils/escapeRegExp.js'
 
 const PARENT_SELECT_FIELDS =
-  'fullName email phone role accountStatus lastLogin createdAt updatedAt'
+  'fullName email phone address role mustChangePassword accountStatus lastLogin createdAt updatedAt'
 const STUDENT_POPULATE_FIELDS =
   'fullName registerNumber email phone department class accountStatus createdAt updatedAt'
 const DEPARTMENT_POPULATE_FIELDS = 'name code description status'
@@ -70,19 +70,61 @@ async function populateChildLinks(links) {
 export async function createParent(data) {
   await assertEmailAvailable(data.email)
 
+  let linkedStudent = null
+
+  if (data.studentId) {
+    linkedStudent = await Student.findById(data.studentId)
+    if (!linkedStudent) {
+      throw new AppError('Student not found', 404)
+    }
+    if (
+      data.registerNumber &&
+      linkedStudent.registerNumber !== data.registerNumber.trim().toUpperCase()
+    ) {
+      throw new AppError(
+        'Selected student does not match the provided admission number',
+        400,
+      )
+    }
+  } else if (data.registerNumber) {
+    linkedStudent = await Student.findOne({
+      registerNumber: data.registerNumber.trim().toUpperCase(),
+    })
+    if (!linkedStudent) {
+      throw new AppError(
+        `No student found with admission number "${data.registerNumber.trim()}"`,
+        404,
+      )
+    }
+  }
+
   const payload = {
     fullName: data.fullName,
     email: data.email,
     password: data.password,
     role: ROLES.PARENT,
-    accountStatus: ACCOUNT_STATUS.ACTIVE,
+    accountStatus: data.accountStatus ?? ACCOUNT_STATUS.ACTIVE,
+    mustChangePassword: true,
   }
 
   if (data.phone) payload.phone = data.phone
+  if (data.address) payload.address = data.address
 
+  let createdParent
   try {
-    return await User.create(payload)
+    createdParent = await User.create(payload)
+    if (linkedStudent) {
+      await ParentStudent.create({
+        parent: createdParent._id,
+        student: linkedStudent._id,
+        relationship: data.relationship || 'Guardian',
+      })
+    }
+    return createdParent
   } catch (error) {
+    if (createdParent?._id) {
+      await User.deleteOne({ _id: createdParent._id }).catch(() => {})
+    }
     if (isDuplicateKeyError(error)) throw parentConflict(error)
     throw error
   }
@@ -132,6 +174,7 @@ export async function updateParent(id, updates) {
   if (updates.fullName !== undefined) parent.fullName = updates.fullName
   if (updates.email !== undefined) parent.email = updates.email
   if (updates.phone !== undefined) parent.phone = updates.phone
+  if (updates.address !== undefined) parent.address = updates.address
 
   try {
     await parent.save()

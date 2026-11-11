@@ -279,8 +279,27 @@ async function verify() {
       password: 'RoboParentPassword123!',
     })
     assert.equal(testParentLogin.status, 200)
-    const activeParentToken = testParentLogin.data.accessToken
-    console.log('✔ Active parent authenticated')
+    assert.equal(testParentLogin.data.user.mustChangePassword, true)
+    const blockedParentChildren = await get(
+      baseUrl,
+      '/api/v1/parents/me/children',
+      testParentLogin.data.accessToken,
+    )
+    assert.equal(blockedParentChildren.status, 403)
+    const parentChangePass = await post(
+      baseUrl,
+      '/api/v1/auth/change-password',
+      {
+        currentPassword: 'RoboParentPassword123!',
+        newPassword: 'RoboParentNewPass123!',
+        confirmPassword: 'RoboParentNewPass123!',
+      },
+      testParentLogin.data.accessToken,
+    )
+    assert.equal(parentChangePass.status, 200)
+    assert.equal(parentChangePass.data.user.mustChangePassword, false)
+    const activeParentToken = parentChangePass.data.accessToken
+    console.log('✔ Active parent authenticated and completed first-login password change')
 
     // Stage 2: Retrieve linked child
     console.log('Stage 2: Parent retrieves linked child...')
@@ -326,7 +345,26 @@ async function verify() {
       password: 'RoboTutorPassword123!',
     })
     assert.equal(testTutorLogin.status, 200)
-    const activeTutorToken = testTutorLogin.data.accessToken
+    assert.equal(testTutorLogin.data.user.mustChangePassword, true)
+    const blockedTutorLeaves = await get(
+      baseUrl,
+      '/api/v1/tutors/me/approved-leaves',
+      testTutorLogin.data.accessToken,
+    )
+    assert.equal(blockedTutorLeaves.status, 403)
+    const tutorChangePass = await post(
+      baseUrl,
+      '/api/v1/auth/change-password',
+      {
+        currentPassword: 'RoboTutorPassword123!',
+        newPassword: 'RoboTutorNewPass123!',
+        confirmPassword: 'RoboTutorNewPass123!',
+      },
+      testTutorLogin.data.accessToken,
+    )
+    assert.equal(tutorChangePass.status, 200)
+    assert.equal(tutorChangePass.data.user.mustChangePassword, false)
+    const activeTutorToken = tutorChangePass.data.accessToken
 
     const tutorApprovedBefore = await get(baseUrl, '/api/v1/tutors/me/approved-leaves', activeTutorToken)
     assert.equal(tutorApprovedBefore.status, 200)
@@ -341,7 +379,26 @@ async function verify() {
       password: 'RoboHodPassword123!',
     })
     assert.equal(testHodLogin.status, 200)
-    const activeHodToken = testHodLogin.data.accessToken
+    assert.equal(testHodLogin.data.user.mustChangePassword, true)
+    const blockedHodQueue = await get(
+      baseUrl,
+      '/api/v1/leave-applications?status=PENDING',
+      testHodLogin.data.accessToken,
+    )
+    assert.equal(blockedHodQueue.status, 403)
+    const hodChangePass = await post(
+      baseUrl,
+      '/api/v1/auth/change-password',
+      {
+        currentPassword: 'RoboHodPassword123!',
+        newPassword: 'RoboHodNewPass123!',
+        confirmPassword: 'RoboHodNewPass123!',
+      },
+      testHodLogin.data.accessToken,
+    )
+    assert.equal(hodChangePass.status, 200)
+    assert.equal(hodChangePass.data.user.mustChangePassword, false)
+    const activeHodToken = hodChangePass.data.accessToken
 
     const hodQueue = await get(baseUrl, '/api/v1/leave-applications?status=PENDING', activeHodToken)
     assert.equal(hodQueue.status, 200)

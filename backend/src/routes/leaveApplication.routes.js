@@ -13,6 +13,7 @@ import {
 } from '../controllers/leaveApplication.controller.js'
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import { uploadSupportingDocument } from '../middleware/uploadSupportingDocument.js'
 import {
   validateBody,
@@ -30,7 +31,7 @@ import {
 
 const leaveApplicationRouter = Router()
 
-leaveApplicationRouter.use(authenticate)
+leaveApplicationRouter.use(authenticate, requirePasswordChanged)
 
 leaveApplicationRouter.post(
   '/',

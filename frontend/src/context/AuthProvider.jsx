@@ -87,7 +87,9 @@ export function AuthProvider({ children }) {
       persist(normalized, remember)
       if (token) {
         setAccessToken(token)
-        connectSocket(token)
+        if (!normalized.mustChangePassword) {
+          connectSocket(token)
+        }
       }
     },
     [persist],
@@ -104,9 +106,37 @@ export function AuthProvider({ children }) {
       persist(normalized, remember)
       if (result.accessToken) {
         setAccessToken(result.accessToken)
-        connectSocket(result.accessToken)
+        if (!normalized.mustChangePassword) {
+          connectSocket(result.accessToken)
+        }
       }
       return { user: normalized, accessToken: result.accessToken }
+    },
+    [persist],
+  )
+
+  const changePassword = useCallback(
+    async ({ currentPassword, newPassword, confirmPassword }) => {
+      const result = await authApi.changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      })
+      const normalized = normalizeUser({
+        ...result.user,
+        mustChangePassword: Boolean(result.user?.mustChangePassword),
+        isBackend: true,
+      })
+      const remember = Boolean(localStorage.getItem(AUTH_STORAGE_KEY))
+      setUser(normalized)
+      persist(normalized, remember)
+      if (result.accessToken) {
+        setAccessToken(result.accessToken)
+        if (!normalized.mustChangePassword) {
+          connectSocket(result.accessToken)
+        }
+      }
+      return { user: normalized, message: result.message }
     },
     [persist],
   )
@@ -140,7 +170,9 @@ export function AuthProvider({ children }) {
           setUser(normalized)
           const remember = Boolean(localStorage.getItem(AUTH_STORAGE_KEY))
           persist(normalized, remember)
-          connectSocket(result.accessToken)
+          if (!normalized.mustChangePassword) {
+            connectSocket(result.accessToken)
+          }
         } else if (mounted) {
           setUser(null)
           persist(null)
@@ -190,10 +222,19 @@ export function AuthProvider({ children }) {
       isLoading,
       login,
       loginWithCredentials,
+      changePassword,
       logout,
       updateProfile,
     }),
-    [user, isLoading, login, loginWithCredentials, logout, updateProfile],
+    [
+      user,
+      isLoading,
+      login,
+      loginWithCredentials,
+      changePassword,
+      logout,
+      updateProfile,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

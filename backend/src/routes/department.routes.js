@@ -11,6 +11,7 @@ import {
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeDepartmentAccess } from '../middleware/authorizeDepartmentAccess.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import {
   validateBody,
   validateParams,
@@ -26,7 +27,7 @@ import { idParamsSchema } from '../validators/common.validator.js'
 
 const departmentRouter = Router()
 
-departmentRouter.use(authenticate)
+departmentRouter.use(authenticate, requirePasswordChanged)
 
 // Administration: ADMIN only.
 departmentRouter.post(

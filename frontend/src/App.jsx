@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import ProtectedRoute from './components/routing/ProtectedRoute'
+import ProtectedRoute, {
+  PasswordChangeRoute,
+} from './components/routing/ProtectedRoute'
 import DashboardLayout from './components/layout/DashboardLayout'
 import { ROLES } from './constants'
 
@@ -7,6 +9,7 @@ import LandingPage from './pages/public/LandingPage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import LoginChooserPage from './pages/auth/LoginChooserPage'
 import LoginPage from './pages/auth/LoginPage'
+import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 
 import HodDashboard from './pages/hod/HodDashboard'
 import HodLeaveRequests from './pages/hod/HodLeaveRequests'
@@ -48,6 +51,10 @@ export default function App() {
       <Route path="/login/tutor" element={<LoginPage role="tutor" />} />
       <Route path="/login/parent" element={<LoginPage role="parent" />} />
       <Route path="/admin/login" element={<LoginPage role="admin" />} />
+
+      <Route element={<PasswordChangeRoute />}>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+      </Route>
 
       <Route path="/admin" element={<ProtectedRoute role={ROLES.ADMIN} />}>
         <Route element={<DashboardLayout role={ROLES.ADMIN} />}>

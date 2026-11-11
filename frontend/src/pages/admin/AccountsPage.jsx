@@ -160,9 +160,9 @@ export default function AccountsPage() {
     },
   ]
 
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     if (!target) return
-    updateAccountStatus(target.role, target.id, target.nextStatus)
+    try { await updateAccountStatus(target.role, target.id, target.nextStatus) } catch { return }
     toast.success(`${target.name}'s account is ${target.nextStatus}.`)
     setTarget(null)
   }
@@ -172,7 +172,7 @@ export default function AccountsPage() {
       <PageHeader
         eyebrow="College administration"
         title="Account status"
-        description="Search demo accounts by role and control access. Departments may be left temporarily unassigned."
+        description="Search user accounts by role and control portal access. Departments may be left temporarily unassigned."
       />
       <section className="card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center">
@@ -205,7 +205,7 @@ export default function AccountsPage() {
 
       <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3.5 py-3 text-[11px] leading-relaxed text-amber-900">
         <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        Inactive accounts are denied sign-in and protected demo routes. Existing decision history remains intact.
+        Inactive accounts are denied sign-in and protected portal routes. Existing decision history remains intact.
       </div>
 
       <ConfirmDialog
@@ -213,7 +213,7 @@ export default function AccountsPage() {
         onClose={() => setTarget(null)}
         onConfirm={confirmStatusChange}
         title={`${target?.nextStatus === 'active' ? 'Activate' : 'Deactivate'} account?`}
-        description={`${target?.name || 'This account'} will ${target?.nextStatus === 'active' ? 'regain' : 'lose'} access to the demo portal.`}
+        description={`${target?.name || 'This account'} will ${target?.nextStatus === 'active' ? 'regain' : 'lose'} access to the portal.`}
         confirmLabel={target?.nextStatus === 'active' ? 'Activate account' : 'Deactivate account'}
       >
         <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">

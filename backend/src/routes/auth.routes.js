@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import {
+  changePassword,
   getMe,
   login,
   logout,
@@ -8,7 +9,10 @@ import {
 import { authenticate } from '../middleware/authenticate.js'
 import { loginRateLimiter } from '../middleware/rateLimiter.js'
 import { validateBody } from '../middleware/validate.js'
-import { loginSchema } from '../validators/auth.validator.js'
+import {
+  changePasswordSchema,
+  loginSchema,
+} from '../validators/auth.validator.js'
 
 const authRouter = Router()
 
@@ -23,7 +27,13 @@ authRouter.post('/login', loginRateLimiter, validateBody(loginSchema), login)
 authRouter.post('/logout', logout)
 authRouter.post('/refresh', refresh)
 
-// Protected route.
+// Protected routes.
 authRouter.get('/me', authenticate, getMe)
+authRouter.post(
+  '/change-password',
+  authenticate,
+  validateBody(changePasswordSchema),
+  changePassword,
+)
 
 export default authRouter

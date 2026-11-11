@@ -46,6 +46,12 @@ export const createTutorSchema = z
     password: passwordSchema,
     phone: phoneSchema.optional(),
     employeeId: employeeIdSchema.optional(),
+    designation: z
+      .string()
+      .trim()
+      .max(100, 'Designation must be 100 characters or fewer')
+      .optional(),
+    accountStatus: accountStatusSchema.optional(),
     department: objectIdSchema,
     assignedClasses: classIdsSchema,
   })
@@ -57,6 +63,11 @@ export const updateTutorSchema = z
     email: emailSchema.optional(),
     phone: phoneSchema.optional(),
     employeeId: employeeIdSchema.optional(),
+    designation: z
+      .string()
+      .trim()
+      .max(100, 'Designation must be 100 characters or fewer')
+      .optional(),
     department: objectIdSchema.optional(),
     assignedClasses: classIdsSchema,
   })

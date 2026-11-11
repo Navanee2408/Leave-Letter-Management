@@ -12,6 +12,7 @@ import { DEMO_STORAGE_KEY, ROLES } from '../constants'
 import { saveDemoHodPassword } from '../data/demoAuth'
 import { getAccessToken } from '../services/api/client'
 import {
+  getErrorMessage,
   departmentApi,
   hodApi,
   classApi,
@@ -46,20 +47,45 @@ function commit(setDb, operation) {
   })
 }
 
+const EMPTY_DATABASE = Object.freeze({
+  version: 0,
+  departments: [],
+  hods: [],
+  classes: [],
+  tutors: [],
+  students: [],
+  parents: [],
+  leaves: [],
+  notifications: [],
+})
+
+function createEmptyDatabase() {
+  return {
+    version: 0,
+    departments: [],
+    hods: [],
+    classes: [],
+    tutors: [],
+    students: [],
+    parents: [],
+    leaves: [],
+    notifications: [],
+  }
+}
+
 export function DataProvider({ children }) {
   const { user } = useAuth()
-  const [db, setDb] = useState(loadDatabase)
+  const [db, setDb] = useState(createEmptyDatabase)
   const [isLoadingBackend, setIsLoadingBackend] = useState(false)
+  const isBackend = Boolean(user && (user.isBackend || getAccessToken()))
 
   useEffect(() => {
     const syncDatabase = (event) => {
-      if (event.key === DEMO_STORAGE_KEY) setDb(loadDatabase())
+      if (!isBackend && event.key === DEMO_STORAGE_KEY) setDb(loadDatabase())
     }
     window.addEventListener('storage', syncDatabase)
     return () => window.removeEventListener('storage', syncDatabase)
-  }, [])
-
-  const isBackend = Boolean(user && (user.isBackend || getAccessToken()))
+  }, [isBackend])
 
   const refreshBackendData = useCallback(async () => {
     if (!user || (!user.isBackend && !getAccessToken())) return
@@ -266,14 +292,18 @@ export function DataProvider({ children }) {
 
   // Initial data loading when backend user is authenticated
   useEffect(() => {
-    if (user && isBackend) {
+    if (!user) {
+      setDb(createEmptyDatabase())
+      return
+    }
+    if (isBackend && !user.mustChangePassword) {
       refreshBackendData()
     }
   }, [user, isBackend, refreshBackendData])
 
   // Real-time socket event listeners
   useEffect(() => {
-    if (!user || !isBackend) return
+    if (!user || !isBackend || user.mustChangePassword) return
 
     const unsubNew = onNewNotification((payload) => {
       if (payload?.notification) {
@@ -328,8 +358,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to create department'
+          const msg = getErrorMessage(err, 'Failed to create department')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -355,8 +386,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update department'
+          const msg = getErrorMessage(err, 'Failed to update department')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -375,8 +407,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to delete department'
+          const msg = getErrorMessage(err, 'Failed to delete department')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -389,19 +422,22 @@ export function DataProvider({ children }) {
     async (payload) => {
       if (isBackend) {
         try {
-          await hodApi.create({
+          const res = await hodApi.create({
             fullName: payload.name || payload.fullName,
             email: payload.email,
             password: payload.password,
             phone: payload.phone || undefined,
             employeeId: payload.employeeId || undefined,
+            designation: payload.designation || undefined,
+            accountStatus: (payload.status || payload.accountStatus || 'ACTIVE').toUpperCase(),
             department: payload.departmentId || payload.department,
           })
           await refreshBackendData()
-          return
+          return res.hod
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to create HOD'
+          const msg = getErrorMessage(err, 'Failed to create HOD')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -427,8 +463,11 @@ export function DataProvider({ children }) {
           const updateData = {}
           if (payload.name || payload.fullName) updateData.fullName = payload.name || payload.fullName
           if (payload.email) updateData.email = payload.email
-          if (payload.phone) updateData.phone = payload.phone
+          if (payload.phone !== undefined) updateData.phone = payload.phone || undefined
           if (payload.employeeId) updateData.employeeId = payload.employeeId
+          if (payload.designation !== undefined) {
+            updateData.designation = payload.designation || undefined
+          }
           if (payload.departmentId || payload.department) {
             updateData.department = payload.departmentId || payload.department
           }
@@ -438,8 +477,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update HOD'
+          const msg = getErrorMessage(err, 'Failed to update HOD')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -456,8 +496,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to delete HOD'
+          const msg = getErrorMessage(err, 'Failed to delete HOD')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -474,8 +515,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to assign HOD'
+          const msg = getErrorMessage(err, 'Failed to assign HOD')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -507,8 +549,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update account status'
+          const msg = getErrorMessage(err, 'Failed to update account status')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -533,8 +576,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to create class'
+          const msg = getErrorMessage(err, 'Failed to create class')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -566,8 +610,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update class'
+          const msg = getErrorMessage(err, 'Failed to update class')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -584,8 +629,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to delete class'
+          const msg = getErrorMessage(err, 'Failed to delete class')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -616,8 +662,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to create student'
+          const msg = getErrorMessage(err, 'Failed to create student')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -656,8 +703,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update student'
+          const msg = getErrorMessage(err, 'Failed to update student')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -674,8 +722,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to delete student'
+          const msg = getErrorMessage(err, 'Failed to delete student')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -688,27 +737,38 @@ export function DataProvider({ children }) {
     async (payload) => {
       if (isBackend) {
         try {
+          const childIds =
+            payload.childIds || (payload.studentId ? [payload.studentId] : [])
           const res = await parentApi.create({
             fullName: payload.name || payload.fullName,
             email: payload.email,
             password: payload.password,
             phone: payload.phone || undefined,
+            address: payload.address || undefined,
+            accountStatus: (
+              payload.status ||
+              payload.accountStatus ||
+              'ACTIVE'
+            ).toUpperCase(),
+            studentId: childIds[0] || undefined,
+            registerNumber: payload.registerNumber || undefined,
+            relationship: payload.relationship || undefined,
           })
           const parentId = res.parent?.id || res.parent?._id
-          const childIds = payload.childIds || (payload.studentId ? [payload.studentId] : [])
-          if (parentId && childIds.length > 0) {
-            for (const childId of childIds) {
+          if (parentId && childIds.length > 1) {
+            for (const childId of childIds.slice(1)) {
               await parentApi.addChild(parentId, {
                 studentId: childId,
                 relationship: payload.relationship || 'Guardian',
-              }).catch(() => {})
+              })
             }
           }
           await refreshBackendData()
-          return
+          return res.parent
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to create parent'
+          const msg = getErrorMessage(err, 'Failed to create parent')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -725,31 +785,50 @@ export function DataProvider({ children }) {
             await parentApi.setStatus(id, payload.status.toUpperCase())
           }
           const updateData = {}
-          if (payload.name || payload.fullName) updateData.fullName = payload.name || payload.fullName
+          if (payload.name || payload.fullName) {
+            updateData.fullName = payload.name || payload.fullName
+          }
           if (payload.email) updateData.email = payload.email
-          if (payload.phone) updateData.phone = payload.phone
+          if (payload.phone !== undefined) {
+            updateData.phone = payload.phone || undefined
+          }
+          if (payload.address !== undefined) {
+            updateData.address = payload.address || undefined
+          }
           if (Object.keys(updateData).length > 0) {
             await parentApi.update(id, updateData)
           }
           if (payload.childIds && Array.isArray(payload.childIds)) {
-            for (const childId of payload.childIds) {
-              await parentApi.addChild(id, {
-                studentId: childId,
-                relationship: payload.relationship || 'Guardian',
-              }).catch(() => {})
+            const existingParent = db.parents.find((p) => p.id === id)
+            const currentIds = new Set(existingParent?.childIds || [])
+            const nextIds = new Set(payload.childIds)
+
+            for (const removedId of currentIds) {
+              if (!nextIds.has(removedId)) {
+                await parentApi.removeChild(id, removedId)
+              }
+            }
+            for (const addedId of nextIds) {
+              if (!currentIds.has(addedId)) {
+                await parentApi.addChild(id, {
+                  studentId: addedId,
+                  relationship: payload.relationship || 'Guardian',
+                })
+              }
             }
           }
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update parent'
+          const msg = getErrorMessage(err, 'Failed to update parent')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
       commit(setDb, (current) => demoService.updateParent(current, id, payload))
     },
-    [isBackend, refreshBackendData],
+    [isBackend, db.parents, refreshBackendData],
   )
 
   const deleteParent = useCallback(
@@ -760,8 +839,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to delete parent'
+          const msg = getErrorMessage(err, 'Failed to delete parent')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -774,20 +854,27 @@ export function DataProvider({ children }) {
     async (payload) => {
       if (isBackend) {
         try {
-          await tutorApi.create({
+          const res = await tutorApi.create({
             fullName: payload.name || payload.fullName,
             email: payload.email,
             password: payload.password,
             phone: payload.phone || undefined,
             employeeId: payload.employeeId || undefined,
+            designation: payload.designation || undefined,
+            accountStatus: (
+              payload.status ||
+              payload.accountStatus ||
+              'ACTIVE'
+            ).toUpperCase(),
             department: payload.departmentId || payload.department,
             assignedClasses: payload.classIds || payload.assignedClasses || [],
           })
           await refreshBackendData()
-          return
+          return res.tutor
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to create tutor'
+          const msg = getErrorMessage(err, 'Failed to create tutor')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -804,10 +891,17 @@ export function DataProvider({ children }) {
             await tutorApi.setStatus(id, payload.status.toUpperCase())
           }
           const updateData = {}
-          if (payload.name || payload.fullName) updateData.fullName = payload.name || payload.fullName
+          if (payload.name || payload.fullName) {
+            updateData.fullName = payload.name || payload.fullName
+          }
           if (payload.email) updateData.email = payload.email
-          if (payload.phone) updateData.phone = payload.phone
+          if (payload.phone !== undefined) {
+            updateData.phone = payload.phone || undefined
+          }
           if (payload.employeeId) updateData.employeeId = payload.employeeId
+          if (payload.designation !== undefined) {
+            updateData.designation = payload.designation || undefined
+          }
           if (payload.departmentId || payload.department) {
             updateData.department = payload.departmentId || payload.department
           }
@@ -820,8 +914,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to update tutor'
+          const msg = getErrorMessage(err, 'Failed to update tutor')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -838,8 +933,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to delete tutor'
+          const msg = getErrorMessage(err, 'Failed to delete tutor')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -874,8 +970,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to submit leave'
+          const msg = getErrorMessage(err, 'Failed to submit leave')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -892,8 +989,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to approve leave'
+          const msg = getErrorMessage(err, 'Failed to approve leave')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -912,8 +1010,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to reject leave'
+          const msg = getErrorMessage(err, 'Failed to reject leave')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -931,8 +1030,9 @@ export function DataProvider({ children }) {
           await submitLeave(payload)
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to resubmit leave'
+          const msg = getErrorMessage(err, 'Failed to resubmit leave')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }
@@ -951,8 +1051,9 @@ export function DataProvider({ children }) {
           await refreshBackendData()
           return
         } catch (err) {
-          const msg = err.response?.data?.message || err.message || 'Failed to reopen leave'
+          const msg = getErrorMessage(err, 'Failed to reopen leave')
           toast.error(msg)
+          if (err && typeof err === 'object') err._toastShown = true
           throw err
         }
       }

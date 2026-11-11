@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { GraduationCap } from 'lucide-react'
 import CrudPage from '../../components/admin/CrudPage'
+import CreatedCredentialsModal from '../../components/admin/CreatedCredentialsModal'
 import Avatar from '../../components/ui/Avatar'
 import { useData } from '../../hooks/useData'
 import {
@@ -31,6 +32,7 @@ export default function TutorsPage() {
   } = useData()
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [status, setStatus] = useState('')
+  const [createdCredentials, setCreatedCredentials] = useState(null)
 
   const rows = useMemo(
     () =>
@@ -97,9 +99,11 @@ export default function TutorsPage() {
       type: 'select',
       required: true,
       options: [
+        'Class Tutor',
         'Professor',
         'Associate Professor',
         'Assistant Professor',
+        'Lecturer',
         'Visiting Faculty',
       ].map((designation) => ({
         value: designation,
@@ -108,10 +112,20 @@ export default function TutorsPage() {
     },
     {
       name: 'status',
-      label: 'Status',
+      label: 'Account status',
       type: 'select',
       required: true,
       options: ACCOUNT_STATUS_OPTIONS,
+    },
+    {
+      name: 'password',
+      label: 'Temporary password',
+      type: 'password',
+      requiredWhenCreating: true,
+      hiddenWhenEditing: true,
+      full: true,
+      placeholder: 'Enter temporary password (minimum 8 characters)',
+      hint: 'Tutor will be required to change this temporary password on first login.',
     },
     {
       name: 'classIds',
@@ -119,27 +133,28 @@ export default function TutorsPage() {
       type: 'checkbox-group',
       full: true,
       columns: 2,
+      emptyText: 'Select a department first to view classes in that department.',
       options: (values) =>
         db.classes
-          .filter(
-            (classItem) =>
-              (classItem.status === 'active' &&
-                db.departments.some(
-                  (department) =>
-                    department.id === classItem.departmentId &&
-                    department.status === 'active',
-                )) ||
-              values?.classIds?.includes(classItem.id),
-          )
+          .filter((classItem) => {
+            if (values?.classIds?.includes(classItem.id)) return true
+            if (!values?.departmentId) return false
+            return (
+              classItem.departmentId === values.departmentId &&
+              classItem.status === 'active'
+            )
+          })
           .map((classItem) => {
             const tutor = db.tutors.find((item) => item.id === classItem.tutorId)
             return {
               value: classItem.id,
               label: `${classTitle(db, classItem)}${classItem.status === 'inactive' ? ' · inactive (existing)' : ''}`,
-              description: tutor ? `Currently assigned to ${tutor.name}` : 'Unassigned class',
+              description: tutor
+                ? `Currently assigned to ${tutor.name}`
+                : 'Unassigned class',
             }
           }),
-      hint: 'Assign this tutor to classes in any active department. Existing inactive-class assignments remain visible and are preserved.',
+      hint: 'Only classes from the selected department can be assigned.',
     },
   ]
 
@@ -220,109 +235,138 @@ export default function TutorsPage() {
   ]
 
   return (
-    <CrudPage
-      eyebrow="College administration"
-      title="Class tutors"
-      description="Manage faculty records and class assignments. Tutors only receive approved leave updates for the classes they coordinate."
-      entityLabel="Tutor"
-      rows={rows}
-      columns={columns}
-      fields={fields}
-      searchText={(row) =>
-        `${row.name} ${row.email} ${row.phone} ${row.designation} ${row.classes
-          .map((classItem) => classItem.label)
-          .join(' ')}`
-      }
-      searchPlaceholder="Search tutors…"
-      filters={[
-        {
-          id: 'tutor-department-filter',
-          label: 'Department',
-          value: departmentFilter,
-          onChange: setDepartmentFilter,
-          options: db.departments.map((department) => ({
-            value: department.id,
-            label: department.code,
-          })),
-          allLabel: 'All departments',
-        },
-        {
-          id: 'tutor-status-filter',
-          label: 'Account status',
-          value: status,
-          onChange: setStatus,
-          options: ACCOUNT_STATUS_OPTIONS,
-          allLabel: 'All statuses',
-        },
-      ]}
-      filterKey={`${departmentFilter}-${status}`}
-      initialValues={(row) => ({
-        name: row?.name || '',
-        email: row?.email || '',
-        phone: row?.phone || '',
-        departmentId: row?.departmentId || '',
-        designation: row?.designation || 'Assistant Professor',
-        status: row?.status || 'active',
-        classIds: row?.classes?.map((classItem) => classItem.id) || [],
-      })}
-      validate={(values, editing) => {
-        const errors = {}
-        if (
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())
-        ) {
-          errors.email = 'Enter a valid email address.'
+    <>
+      <CrudPage
+        eyebrow="College administration"
+        title="Class tutors"
+        description="Manage faculty accounts, department links, and class assignments. Tutors only receive approved leave updates for their assigned classes."
+        entityLabel="Tutor"
+        rows={rows}
+        columns={columns}
+        fields={fields}
+        searchText={(row) =>
+          `${row.name} ${row.email} ${row.phone} ${row.designation} ${row.classes
+            .map((classItem) => classItem.label)
+            .join(' ')}`
         }
-        if (
-          db.tutors.some(
-            (tutor) =>
-              tutor.id !== editing?.id &&
-              tutor.email.toLowerCase() === values.email.trim().toLowerCase(),
-          )
-        ) {
-          errors.email = 'This tutor email is already in use.'
+        searchPlaceholder="Search tutors…"
+        filters={[
+          {
+            id: 'tutor-department-filter',
+            label: 'Department',
+            value: departmentFilter,
+            onChange: setDepartmentFilter,
+            options: db.departments.map((department) => ({
+              value: department.id,
+              label: department.code,
+            })),
+            allLabel: 'All departments',
+          },
+          {
+            id: 'tutor-status-filter',
+            label: 'Account status',
+            value: status,
+            onChange: setStatus,
+            options: ACCOUNT_STATUS_OPTIONS,
+            allLabel: 'All statuses',
+          },
+        ]}
+        filterKey={`${departmentFilter}-${status}`}
+        initialValues={(row) => ({
+          name: row?.name || '',
+          email: row?.email || '',
+          phone: row?.phone || '',
+          departmentId: row?.departmentId || '',
+          designation: row?.designation || 'Assistant Professor',
+          status: row?.status || 'active',
+          password: '',
+          classIds: row?.classes?.map((classItem) => classItem.id) || [],
+        })}
+        validate={(values, editing) => {
+          const errors = {}
+          if (
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())
+          ) {
+            errors.email = 'Enter a valid email address.'
+          }
+          if (
+            db.tutors.some(
+              (tutor) =>
+                tutor.id !== editing?.id &&
+                tutor.email.toLowerCase() === values.email.trim().toLowerCase(),
+            )
+          ) {
+            errors.email = 'This tutor email is already in use.'
+          }
+          if (values.phone.trim().replace(/\D/g, '').length < 10) {
+            errors.phone = 'Enter a phone number with at least 10 digits.'
+          }
+          if (!editing?.id && (!values.password || values.password.length < 8)) {
+            errors.password = 'Temporary password must be at least 8 characters.'
+          }
+          const wrongDeptClass = (values.classIds || []).find((classId) => {
+            const cls = db.classes.find((item) => item.id === classId)
+            return cls && values.departmentId && cls.departmentId !== values.departmentId
+          })
+          if (wrongDeptClass) {
+            errors.classIds =
+              'Assigned classes must belong to the selected department.'
+          }
+          return errors
+        }}
+        onCreate={async (values) => {
+          const filteredClassIds = (values.classIds || []).filter((classId) => {
+            const cls = db.classes.find((item) => item.id === classId)
+            return cls && cls.departmentId === values.departmentId
+          })
+          const created = await addTutor({
+            name: values.name.trim(),
+            email: values.email.trim(),
+            phone: values.phone.trim(),
+            departmentId: values.departmentId,
+            designation: values.designation,
+            status: values.status,
+            password: values.password,
+            classIds: filteredClassIds,
+          })
+          setCreatedCredentials({
+            roleLabel: 'Class Tutor',
+            name: created?.fullName || created?.name || values.name.trim(),
+            email: created?.email || values.email.trim(),
+            temporaryPassword: values.password,
+          })
+        }}
+        onUpdate={(id, values) =>
+          updateTutor(id, {
+            name: values.name.trim(),
+            email: values.email.trim(),
+            phone: values.phone.trim(),
+            departmentId: values.departmentId,
+            designation: values.designation,
+            status: values.status,
+            classIds: values.classIds || [],
+          })
         }
-        if (values.phone.trim().replace(/\D/g, '').length < 10) {
-          errors.phone = 'Enter a phone number with at least 10 digits.'
+        onDelete={deleteTutor}
+        deleteGuard={(row) => {
+          if (row.classes.length) {
+            return 'Reassign this tutor’s classes before deleting the tutor record.'
+          }
+          return null
+        }}
+        extraActions={
+          <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10.5px] font-medium text-slate-500 sm:inline-flex">
+            <GraduationCap className="h-3 w-3" aria-hidden="true" />
+            {db.tutors.length} tutors
+          </span>
         }
-        return errors
-      }}
-      onCreate={(values) =>
-        addTutor({
-          name: values.name.trim(),
-          email: values.email.trim(),
-          phone: values.phone.trim(),
-          departmentId: values.departmentId,
-          designation: values.designation,
-          status: values.status,
-          classIds: values.classIds || [],
-        })
-      }
-      onUpdate={(id, values) =>
-        updateTutor(id, {
-          name: values.name.trim(),
-          email: values.email.trim(),
-          phone: values.phone.trim(),
-          departmentId: values.departmentId,
-          designation: values.designation,
-          status: values.status,
-          classIds: values.classIds || [],
-        })
-      }
-      onDelete={deleteTutor}
-      deleteGuard={(row) => {
-        if (row.classes.length) {
-          return 'Reassign this tutor’s classes before deleting the tutor record.'
-        }
-        return null
-      }}
-      extraActions={
-        <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10.5px] font-medium text-slate-500 sm:inline-flex">
-          <GraduationCap className="h-3 w-3" aria-hidden="true" />
-          {db.tutors.length} tutors
-        </span>
-      }
-      emptyTitle="No class tutors found"
-      emptyDescription="Add a tutor, or adjust the department and status filters."
-    />
+        emptyTitle="No class tutors found"
+        emptyDescription="Add a tutor, or adjust the department and status filters."
+      />
+      <CreatedCredentialsModal
+        credentials={createdCredentials}
+        onClose={() => setCreatedCredentials(null)}
+      />
+    </>
   )
 }

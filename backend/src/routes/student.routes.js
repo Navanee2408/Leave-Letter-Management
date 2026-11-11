@@ -9,6 +9,7 @@ import {
 } from '../controllers/student.controller.js'
 import { authenticate } from '../middleware/authenticate.js'
 import { authorizeRoles } from '../middleware/authorizeRoles.js'
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js'
 import {
   validateBody,
   validateParams,
@@ -24,7 +25,7 @@ import {
 
 const studentRouter = Router()
 
-studentRouter.use(authenticate)
+studentRouter.use(authenticate, requirePasswordChanged)
 
 studentRouter.post(
   '/',
